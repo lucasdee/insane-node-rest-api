@@ -1,0 +1,25 @@
+{
+  "entryFile": "src/server.ts",
+  "noImplicitAdditionalProperties": "silently-remove-extras",
+  "controllerPathGlobs": ["src/controllers/**/*controller.ts"],
+  "spec": {
+    "outputDirectory": "src/docs",
+    "specVersion": 3,
+    "basePath": "/api",
+    "disableAdditionalProperties": "all",
+    "securityDefinitions": {
+      "jwt": {
+        "type": "apiKey",
+        "name": "Authorization",
+        "in": "header"
+      }
+    }
+  },
+  "routes": {
+    "routesDir": "src/routes",
+    "authenticationModule": "src/middlewares/tsoaAuth.ts",
+    "middleware": "express",
+    "validation": true,
+    "esm": true
+  }
+}

@@ -1,0 +1,3 @@
+src/generated
+src/docs/swagger.json
+src/routes/routes.ts
