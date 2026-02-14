@@ -90,6 +90,16 @@ npm run tsoa:routes
 
 The generated spec is available at `src/docs/swagger.json` and an Express route serves Swagger UI in the running app.
 
+## API Types
+
+Generate TypeScript types for the API:
+
+```bash
+npm run types:generate
+```
+
+The generated file will be available at `generated/api.ts`
+
 ## Testing
 
 Run tests with:
