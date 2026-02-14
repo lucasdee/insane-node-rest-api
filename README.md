@@ -13,7 +13,7 @@ A compact, fully-typed REST API starter using Node.js, TypeScript, Express, Pris
 ## Prerequisites
 
 - Node.js >= 24
-- A MySQL or MariaDB instance accessible from your environment
+- A MySQL or MariaDB instance with two databases (main & shadow) accessible from your environment
 - npm (or a compatible package manager)
 
 ## Environment
@@ -30,8 +30,6 @@ DATABASE_PORT=3306
 DATABASE_NAME=your_db_name
 SHADOW_DATABASE_NAME=your_shadow_db_name
 ```
-
-Make sure the database user has permissions to create the shadow database (used by Prisma Migrate).
 
 ## Install
 
