@@ -105,7 +105,7 @@ The generated file will be available at `generated/api.ts`
 Run tests with:
 
 ```bash
-npm test
+npm run test
 ```
 
 Run tests with coverage:
