@@ -1,42 +1,4 @@
 {
-  "compilerOptions": {
-    "incremental": true,
-    "target": "ESNext",
-    "module": "ESNext",
-    "rootDir": "./src",
-    "outDir": "./dist",
-
-    /* Strict Type-Checking Options */
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictBindCallApply": true,
-    "strictPropertyInitialization": true,
-    "noImplicitThis": true,
-    "alwaysStrict": true,
-
-    /* Additional Checks */
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-
-    /* Module Resolution Options */
-    "moduleResolution": "node",
-    "baseUrl": ".",
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-
-    /* Experimental Options */
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    // emitDecoratorMetadata is not needed by tsoa (unless you are using Custom Middlewares)
-
-    /* Advanced Options */
-    "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true
-  },
-  "include": ["src/**/*", "../vitest.config.ts"],
-  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
+  "extends": "./tsconfig.main.json",
+  "exclude": ["**/*.spec.ts", "**/*.test.ts"]
 }

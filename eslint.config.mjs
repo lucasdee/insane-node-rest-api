@@ -13,7 +13,7 @@ export default [
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
-        project: ['./tsconfig.json', './tests/tsconfig.json'],
+        project: ['./tsconfig.main.json'],
       },
     },
     rules: {
