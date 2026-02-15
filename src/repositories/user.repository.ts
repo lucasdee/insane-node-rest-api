@@ -8,15 +8,15 @@ export class UserRepository {
     });
   }
 
-  async createUser(username: string, password: string): Promise<User> {
+  async createUser(username: string, password: string, email: string, displayName: string | null = null): Promise<User> {
     return prisma.user.create({
-      data: { username, password },
+      data: { username, password, email, displayName },
     });
   }
 
-  async findById(id: number): Promise<User | null> {
+  async findByUuid(uuid: string): Promise<User | null> {
     return prisma.user.findUnique({
-      where: { id },
+      where: { uuid },
     });
   }
 }

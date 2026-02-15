@@ -7,8 +7,8 @@ import { LoginRequest, RegisterRequest, AuthResponse } from '../dtos/auth.dto.js
 export class AuthController extends Controller {
   @Post('register')
   public async register(@Body() body: RegisterRequest) {
-    const user = await userService.register(body.username, body.password);
-    return { id: user.id, username: user.username };
+    const user = await userService.register(body.username, body.password, body.email, body.displayName);
+    return user;
   }
 
   @Post('login')
