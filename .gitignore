@@ -141,3 +141,4 @@ vite.config.ts.timestamp-*
 # Custom
 tsconfig.tsbuildinfo
 generated/
+prisma/migrations/

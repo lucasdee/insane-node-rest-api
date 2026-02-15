@@ -11,6 +11,14 @@ export class RegisterRequest {
   @MinLength(6)
   @Example('secret123')
   password!: string;
+
+  @IsString()
+  @Example('user@example.com')
+  email!: string;
+
+  @IsString()
+  @Example('John Doe')
+  displayName?: string | null;
 }
 
 export class LoginRequest {

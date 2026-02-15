@@ -9,22 +9,49 @@
 		"schemas": {
 			"UserProfile": {
 				"properties": {
-					"id": {
-						"type": "number",
-						"format": "double",
-						"example": 1
+					"uuid": {
+						"type": "string",
+						"example": "123e4567-e89b-12d3-a456-426614174000"
 					},
 					"username": {
 						"type": "string",
 						"example": "admin"
+					},
+					"email": {
+						"type": "string",
+						"example": "admin@example.com"
+					},
+					"displayName": {
+						"type": "string",
+						"nullable": true,
+						"example": "John Doe"
+					},
+					"role": {
+						"type": "string",
+						"enum": [
+							"USER",
+							"MOD",
+							"ADMIN"
+						],
+						"example": "USER"
 					}
 				},
 				"required": [
-					"id",
-					"username"
+					"uuid",
+					"username",
+					"email",
+					"role"
 				],
 				"type": "object",
 				"additionalProperties": false
+			},
+			"Role": {
+				"type": "string",
+				"enum": [
+					"USER",
+					"MOD",
+					"ADMIN"
+				]
 			},
 			"RegisterRequest": {
 				"properties": {
@@ -35,11 +62,21 @@
 					"password": {
 						"type": "string",
 						"example": "secret123"
+					},
+					"email": {
+						"type": "string",
+						"example": "user@example.com"
+					},
+					"displayName": {
+						"type": "string",
+						"nullable": true,
+						"example": "John Doe"
 					}
 				},
 				"required": [
 					"username",
-					"password"
+					"password",
+					"email"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -131,17 +168,37 @@
 							"application/json": {
 								"schema": {
 									"properties": {
+										"createdAt": {
+											"type": "string",
+											"format": "date-time"
+										},
+										"role": {
+											"$ref": "#/components/schemas/Role"
+										},
+										"displayName": {
+											"type": "string"
+										},
+										"email": {
+											"type": "string"
+										},
+										"password": {
+											"type": "string"
+										},
 										"username": {
 											"type": "string"
 										},
-										"id": {
-											"type": "number",
-											"format": "double"
+										"uuid": {
+											"type": "string"
 										}
 									},
 									"required": [
+										"createdAt",
+										"role",
+										"displayName",
+										"email",
+										"password",
 										"username",
-										"id"
+										"uuid"
 									],
 									"type": "object"
 								}
