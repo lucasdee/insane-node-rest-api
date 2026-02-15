@@ -5,7 +5,7 @@
   "spec": {
     "outputDirectory": "src/docs",
     "specVersion": 3,
-    "basePath": "/api",
+    "basePath": "/",
     "disableAdditionalProperties": "all",
     "securityDefinitions": {
       "jwt": {
