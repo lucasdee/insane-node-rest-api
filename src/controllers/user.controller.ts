@@ -13,13 +13,13 @@ export class UserController extends Controller {
   @Get('me')
   @Security('jwt')
   public async getProfile(@Request() req: AuthenticatedRequest): Promise<UserProfile> {
-    const uuid = req.user?.sub;
-    if (!uuid) {
+    const userId = req.user?.sub;
+    if (!userId) {
       this.setStatus(401);
       throw new Error('Unauthorized: User ID not found');
     }
     try {
-      const user = await userService.getUser(uuid);
+      const user = await userService.getUser(parseInt(userId, 10));
       return user!;
     } catch (err) {
       this.setStatus(401);
