@@ -12,7 +12,7 @@ datasource db {
 
 model User {
   @@map ("users")
-  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
   uuid        String    @unique @default(uuid()) @db.Char(36)
   username    String    @unique @db.VarChar(64)
   password    String

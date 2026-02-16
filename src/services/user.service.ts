@@ -20,12 +20,11 @@ export class UserService {
     if (!match) throw new Error('Invalid credentials');
 
     const secret = env.jwtSecret;
-    return jwt.sign({ sub: user.uuid }, secret, { expiresIn: '1h' });
+    return jwt.sign({ sub: user.id }, secret, { expiresIn: '1h' });
   }
 
-  async getUser(uuid: string) {
-    // return userRepository.findById(id);
-    return userRepository.findByUuid(uuid);
+  async getUser(id: number) {
+    return userRepository.findById(id);
   }
 }
 

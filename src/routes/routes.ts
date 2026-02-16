@@ -20,6 +20,7 @@ const models: TsoaRoute.Models = {
     "UserProfile": {
         "dataType": "refObject",
         "properties": {
+            "id": {"dataType":"double","required":true},
             "uuid": {"dataType":"string","required":true},
             "username": {"dataType":"string","required":true},
             "email": {"dataType":"string","required":true},

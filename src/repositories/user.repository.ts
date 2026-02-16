@@ -14,9 +14,9 @@ export class UserRepository {
     });
   }
 
-  async findByUuid(uuid: string): Promise<User | null> {
+  async findById(id: number): Promise<User | null> {
     return prisma.user.findUnique({
-      where: { uuid },
+      where: { id },
     });
   }
 }
