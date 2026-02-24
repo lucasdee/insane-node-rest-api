@@ -52,8 +52,8 @@ const models: TsoaRoute.Models = {
     "LoginRequest": {
         "dataType": "refObject",
         "properties": {
-            "username": {"dataType":"string","required":true,"validators":{"minLength":{"value":1}}},
-            "password": {"dataType":"string","required":true,"validators":{"minLength":{"value":1}}},
+            "username": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid username"},"minLength":{"errorMsg":"Please provide a username that is at least 1 character long","value":1}}},
+            "password": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid password"},"minLength":{"errorMsg":"Please provide a password that is at least 1 character long","value":1}}},
         },
         "additionalProperties": false,
     },
