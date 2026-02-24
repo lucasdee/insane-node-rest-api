@@ -17,31 +17,26 @@ const expressAuthenticationRecasted = expressAuthentication as (req: ExRequest, 
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
 const models: TsoaRoute.Models = {
-    "UserProfile": {
+    "User": {
         "dataType": "refObject",
         "properties": {
-            "id": {"dataType":"double","required":true},
             "uuid": {"dataType":"string","required":true},
             "username": {"dataType":"string","required":true},
             "email": {"dataType":"string","required":true},
             "displayName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},
             "role": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["USER"]},{"dataType":"enum","enums":["MOD"]},{"dataType":"enum","enums":["ADMIN"]}],"required":true},
+            "createdAt": {"dataType":"datetime","required":true},
         },
         "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "Role": {
-        "dataType": "refAlias",
-        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["USER"]},{"dataType":"enum","enums":["MOD"]},{"dataType":"enum","enums":["ADMIN"]}],"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "RegisterRequest": {
         "dataType": "refObject",
         "properties": {
-            "username": {"dataType":"string","required":true},
-            "password": {"dataType":"string","required":true},
-            "email": {"dataType":"string","required":true},
-            "displayName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},
+            "username": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid username"},"minLength":{"errorMsg":"Please provide a username that is at least 3 characters long","value":3}}},
+            "password": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid password"},"minLength":{"errorMsg":"Please provide a password that is at least 6 characters long","value":6}}},
+            "email": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid email address"},"pattern":{"errorMsg":"Please provide a valid email address","value":"^(.+)@(.+)\\.(.+)$"}}},
+            "displayName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"validators":{"isString":{"errorMsg":"Please provide a valid display name"}}},
         },
         "additionalProperties": false,
     },
@@ -57,14 +52,14 @@ const models: TsoaRoute.Models = {
     "LoginRequest": {
         "dataType": "refObject",
         "properties": {
-            "username": {"dataType":"string","required":true},
-            "password": {"dataType":"string","required":true},
+            "username": {"dataType":"string","required":true,"validators":{"minLength":{"value":1}}},
+            "password": {"dataType":"string","required":true,"validators":{"minLength":{"value":1}}},
         },
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 };
-const templateService = new ExpressTemplateService(models, {"noImplicitAdditionalProperties":"silently-remove-extras","bodyCoercion":true});
+const templateService = new ExpressTemplateService(models, {"noImplicitAdditionalProperties":"throw-on-extras","bodyCoercion":true});
 
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 

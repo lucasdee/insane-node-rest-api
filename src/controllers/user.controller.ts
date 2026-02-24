@@ -1,7 +1,7 @@
 import { Controller, Get, Route, Security, Tags, Request } from '@tsoa/runtime';
 import type { Request as ExpressRequest } from 'express';
 import { userService } from '../services/user.service.js';
-import { UserProfile } from '../dtos/user.dto.js';
+import { User } from '../dtos/user.dto.js';
 
 interface AuthenticatedRequest extends ExpressRequest {
   user?: { sub: string };
@@ -12,7 +12,7 @@ interface AuthenticatedRequest extends ExpressRequest {
 export class UserController extends Controller {
   @Get('me')
   @Security('jwt')
-  public async getProfile(@Request() req: AuthenticatedRequest): Promise<UserProfile> {
+  public async getProfile(@Request() req: AuthenticatedRequest): Promise<User> {
     const userId = req.user?.sub;
     if (!userId) {
       this.setStatus(401);
@@ -20,7 +20,11 @@ export class UserController extends Controller {
     }
     try {
       const user = await userService.getUser(parseInt(userId, 10));
-      return user!;
+      if (!user) {
+        this.setStatus(404);
+        throw new Error('User not found');
+      }
+      return user;
     } catch (err) {
       this.setStatus(401);
       throw new Error(err instanceof Error ? err.message : 'Unauthorized');
