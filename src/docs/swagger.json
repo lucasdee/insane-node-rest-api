@@ -7,13 +7,8 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
-			"UserProfile": {
+			"User": {
 				"properties": {
-					"id": {
-						"type": "number",
-						"format": "double",
-						"example": 1
-					},
 					"uuid": {
 						"type": "string",
 						"example": "123e4567-e89b-12d3-a456-426614174000"
@@ -39,39 +34,40 @@
 							"ADMIN"
 						],
 						"example": "USER"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time",
+						"example": "2024-01-01T00:00:00.000Z"
 					}
 				},
 				"required": [
-					"id",
 					"uuid",
 					"username",
 					"email",
-					"role"
+					"role",
+					"createdAt"
 				],
 				"type": "object",
 				"additionalProperties": false
-			},
-			"Role": {
-				"type": "string",
-				"enum": [
-					"USER",
-					"MOD",
-					"ADMIN"
-				]
 			},
 			"RegisterRequest": {
 				"properties": {
 					"username": {
 						"type": "string",
-						"example": "newuser"
+						"example": "newuser",
+						"minLength": 3
 					},
 					"password": {
 						"type": "string",
-						"example": "secret123"
+						"example": "secret123",
+						"minLength": 6
 					},
 					"email": {
 						"type": "string",
-						"example": "user@example.com"
+						"example": "user@example.com",
+						"format": "email",
+						"pattern": "^(.+)@(.+)\\.(.+)$"
 					},
 					"displayName": {
 						"type": "string",
@@ -104,11 +100,13 @@
 				"properties": {
 					"username": {
 						"type": "string",
-						"example": "admin"
+						"example": "admin",
+						"minLength": 1
 					},
 					"password": {
 						"type": "string",
-						"example": "admin"
+						"example": "admin",
+						"minLength": 1
 					}
 				},
 				"required": [
@@ -147,7 +145,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/UserProfile"
+									"$ref": "#/components/schemas/User"
 								}
 							}
 						}
@@ -173,45 +171,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"properties": {
-										"createdAt": {
-											"type": "string",
-											"format": "date-time"
-										},
-										"role": {
-											"$ref": "#/components/schemas/Role"
-										},
-										"displayName": {
-											"type": "string"
-										},
-										"email": {
-											"type": "string"
-										},
-										"password": {
-											"type": "string"
-										},
-										"username": {
-											"type": "string"
-										},
-										"uuid": {
-											"type": "string"
-										},
-										"id": {
-											"type": "number",
-											"format": "double"
-										}
-									},
-									"required": [
-										"createdAt",
-										"role",
-										"displayName",
-										"email",
-										"password",
-										"username",
-										"uuid",
-										"id"
-									],
-									"type": "object"
+									"$ref": "#/components/schemas/User"
 								}
 							}
 						}
