@@ -45,6 +45,18 @@ Generate the Prisma client:
 npm run prisma:generate
 ```
 
+Generate the OpenAPI spec:
+
+```bash
+npm run tsoa:spec
+```
+
+Generate the OpenAPI routes:
+
+```bash
+npm run tsoa:routes
+```
+
 ## Database Migrations
 
 During development run:
@@ -66,6 +78,8 @@ Run the development server with hot reload:
 ```bash
 npm run dev
 ```
+
+## Production
 
 Build the project (generates routes/spec via `tsoa` then TypeScript compile):
 
