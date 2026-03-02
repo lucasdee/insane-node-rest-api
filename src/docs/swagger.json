@@ -51,6 +51,130 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"Note": {
+				"properties": {
+					"uuid": {
+						"type": "string",
+						"example": "123e4567-e89b-12d3-a456-426614174000"
+					},
+					"title": {
+						"type": "string",
+						"example": "My first note"
+					},
+					"content": {
+						"type": "string",
+						"example": "This is the content of my first note."
+					},
+					"authorId": {
+						"type": "number",
+						"format": "double",
+						"example": 1
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time",
+						"example": "2024-01-01T00:00:00.000Z"
+					}
+				},
+				"required": [
+					"uuid",
+					"title",
+					"content",
+					"authorId",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"NoteOnUser": {
+				"properties": {
+					"noteId": {
+						"type": "number",
+						"format": "double",
+						"example": 1
+					},
+					"userId": {
+						"type": "number",
+						"format": "double",
+						"example": 1
+					},
+					"assignedById": {
+						"type": "number",
+						"format": "double",
+						"example": 1
+					},
+					"assignedAt": {
+						"type": "string",
+						"format": "date-time",
+						"example": "2024-01-01T00:00:00.000Z"
+					},
+					"role": {
+						"type": "string",
+						"enum": [
+							"USER",
+							"MOD",
+							"ADMIN"
+						],
+						"example": "USER"
+					},
+					"note": {
+						"$ref": "#/components/schemas/Note"
+					}
+				},
+				"required": [
+					"noteId",
+					"userId",
+					"assignedById",
+					"assignedAt",
+					"role"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"NoteCreateRequest": {
+				"properties": {
+					"title": {
+						"type": "string",
+						"example": "My first note"
+					},
+					"content": {
+						"type": "string",
+						"example": "This is the content of my first note."
+					},
+					"authorId": {
+						"type": "number",
+						"format": "double",
+						"example": 1
+					}
+				},
+				"required": [
+					"title",
+					"content",
+					"authorId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"NoteOnUserCreateRequest": {
+				"properties": {
+					"noteId": {
+						"type": "number",
+						"format": "double",
+						"example": 1
+					},
+					"userId": {
+						"type": "number",
+						"format": "double",
+						"example": 1
+					}
+				},
+				"required": [
+					"noteId",
+					"userId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"RegisterRequest": {
 				"properties": {
 					"username": {
@@ -160,6 +284,107 @@
 					}
 				],
 				"parameters": []
+			}
+		},
+		"/notes": {
+			"get": {
+				"operationId": "ListMyNotes",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/NoteOnUser"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Notes"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/note/create": {
+			"post": {
+				"operationId": "CreateNote",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Note"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Note"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/NoteCreateRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/note/assign": {
+			"post": {
+				"operationId": "AssignNoteToUser",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NoteOnUser"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Note"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/NoteOnUserCreateRequest"
+							}
+						}
+					}
+				}
 			}
 		},
 		"/auth/register": {
