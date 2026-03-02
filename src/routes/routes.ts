@@ -6,6 +6,10 @@ import {  fetchMiddlewares, ExpressTemplateService } from '@tsoa/runtime';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { UserController } from './../controllers/user.controller.js';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { NotesController } from './../controllers/note.controller.js';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { NoteController } from './../controllers/note.controller.js';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { AuthController } from './../controllers/auth.controller.js';
 import { expressAuthentication } from './../middlewares/tsoaAuth.js';
 // @ts-ignore - no great way to install types from subpackage
@@ -26,6 +30,50 @@ const models: TsoaRoute.Models = {
             "displayName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},
             "role": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["USER"]},{"dataType":"enum","enums":["MOD"]},{"dataType":"enum","enums":["ADMIN"]}],"required":true},
             "createdAt": {"dataType":"datetime","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "Note": {
+        "dataType": "refObject",
+        "properties": {
+            "uuid": {"dataType":"string","required":true},
+            "title": {"dataType":"string","required":true},
+            "content": {"dataType":"string","required":true},
+            "authorId": {"dataType":"double","required":true},
+            "createdAt": {"dataType":"datetime","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "NoteOnUser": {
+        "dataType": "refObject",
+        "properties": {
+            "noteId": {"dataType":"double","required":true},
+            "userId": {"dataType":"double","required":true},
+            "assignedById": {"dataType":"double","required":true},
+            "assignedAt": {"dataType":"datetime","required":true},
+            "role": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["USER"]},{"dataType":"enum","enums":["MOD"]},{"dataType":"enum","enums":["ADMIN"]}],"required":true},
+            "note": {"ref":"Note"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "NoteCreateRequest": {
+        "dataType": "refObject",
+        "properties": {
+            "title": {"dataType":"string","required":true},
+            "content": {"dataType":"string","required":true},
+            "authorId": {"dataType":"double","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "NoteOnUserCreateRequest": {
+        "dataType": "refObject",
+        "properties": {
+            "noteId": {"dataType":"double","required":true},
+            "userId": {"dataType":"double","required":true},
         },
         "additionalProperties": false,
     },
@@ -95,6 +143,101 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'getProfile',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsNotesController_listMyNotes: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+        };
+        app.get('/notes',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(NotesController)),
+            ...(fetchMiddlewares<RequestHandler>(NotesController.prototype.listMyNotes)),
+
+            async function NotesController_listMyNotes(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsNotesController_listMyNotes, request, response });
+
+                const controller = new NotesController();
+
+              await templateService.apiHandler({
+                methodName: 'listMyNotes',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsNoteController_createNote: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                body: {"in":"body","name":"body","required":true,"ref":"NoteCreateRequest"},
+        };
+        app.post('/note/create',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(NoteController)),
+            ...(fetchMiddlewares<RequestHandler>(NoteController.prototype.createNote)),
+
+            async function NoteController_createNote(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsNoteController_createNote, request, response });
+
+                const controller = new NoteController();
+
+              await templateService.apiHandler({
+                methodName: 'createNote',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsNoteController_assignNoteToUser: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                body: {"in":"body","name":"body","required":true,"ref":"NoteOnUserCreateRequest"},
+        };
+        app.post('/note/assign',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(NoteController)),
+            ...(fetchMiddlewares<RequestHandler>(NoteController.prototype.assignNoteToUser)),
+
+            async function NoteController_assignNoteToUser(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsNoteController_assignNoteToUser, request, response });
+
+                const controller = new NoteController();
+
+              await templateService.apiHandler({
+                methodName: 'assignNoteToUser',
                 controller,
                 response,
                 next,

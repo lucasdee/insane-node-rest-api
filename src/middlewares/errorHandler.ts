@@ -1,5 +1,6 @@
 import { ValidateError } from '@tsoa/runtime';
 import { Request, Response, NextFunction } from 'express';
+import { AuthError, ForbiddenError } from '../errors.js';
 
 export function errorHandler(
   err: unknown,
@@ -13,6 +14,20 @@ export function errorHandler(
     return res.status(422).json({
       message: 'Validation failed',
       details: err?.fields,
+    });
+  }
+
+  // Insufficient permissions errors
+  if (err instanceof ForbiddenError) {
+    return res.status(403).json({
+      message: err.message,
+    });
+  }
+  
+  // Authentication errors
+  if (err instanceof AuthError) {
+    return res.status(401).json({
+      message: err.message,
     });
   }
 
