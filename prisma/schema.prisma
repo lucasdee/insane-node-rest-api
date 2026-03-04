@@ -18,15 +18,15 @@ enum Role {
 
 model User {
   @@map ("users")
-  id          Int       @id @default(autoincrement()) @db.UnsignedInt
-  uuid        String    @unique @default(uuid()) @db.Char(36)
-  username    String    @unique @db.VarChar(64)
-  password    String
-  email       String    @unique @db.VarChar(128)
-  displayName String?   @db.VarChar(64)
-  role        Role      @default(USER)
-  createdAt   DateTime  @default(now())
-  notes       NoteOnUser[]
+  id            Int       @id @default(autoincrement()) @db.UnsignedInt
+  uuid          String    @unique @default(uuid()) @db.Char(36)
+  username      String    @unique @db.VarChar(64)
+  password      String
+  email         String    @unique @db.VarChar(128)
+  displayName   String?   @db.VarChar(64)
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+  notes         NoteOnUser[]
   notesAuthored Note[]
   notesAssigned NoteOnUser[] @relation("assignedBy")
 }
@@ -45,13 +45,13 @@ model Note {
 
 model NoteOnUser {
   @@map ("notes_on_users")
-  note       Note     @relation(fields: [noteId], references: [id])
-  noteId     Int      @db.UnsignedInt
-  user       User     @relation("assignedBy", fields: [userId], references: [id])
-  userId     Int      @db.UnsignedInt
-  assignedAt DateTime @default(now())
-  assignedBy User     @relation(fields: [assignedById], references: [id])
-  assignedById Int     @db.UnsignedInt
-  role       Role     @default(USER)
+  note          Note     @relation(fields: [noteId], references: [id])
+  noteId        Int      @db.UnsignedInt
+  user          User     @relation(fields: [userId], references: [id])
+  userId        Int      @db.UnsignedInt
+  assignedAt    DateTime @default(now())
+  assignedBy    User     @relation("assignedBy", fields: [assignedById], references: [id])
+  assignedById  Int     @db.UnsignedInt
+  role          Role     @default(USER)
   @@id([noteId, userId])
 }
