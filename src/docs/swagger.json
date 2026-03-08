@@ -218,10 +218,6 @@
 						"format": "double",
 						"example": 1772719299
 					},
-					"refreshToken": {
-						"type": "string",
-						"example": "d1f2e3c4b5a6..."
-					},
 					"refreshTokenExpiresOn": {
 						"type": "number",
 						"format": "double",
@@ -231,7 +227,6 @@
 				"required": [
 					"accessToken",
 					"accessTokenExpiresOn",
-					"refreshToken",
 					"refreshTokenExpiresOn"
 				],
 				"type": "object",
@@ -253,20 +248,6 @@
 				"required": [
 					"username",
 					"password"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"RefreshRequest": {
-				"properties": {
-					"refreshToken": {
-						"type": "string",
-						"example": "d1f2e3c4b5a6...",
-						"minLength": 1
-					}
-				},
-				"required": [
-					"refreshToken"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -501,17 +482,7 @@
 					"Auth"
 				],
 				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/RefreshRequest"
-							}
-						}
-					}
-				}
+				"parameters": []
 			}
 		},
 		"/auth/logout": {
@@ -530,17 +501,7 @@
 						"jwt": []
 					}
 				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/RefreshRequest"
-							}
-						}
-					}
-				}
+				"parameters": []
 			}
 		},
 		"/auth/revoke-expired-tokens": {

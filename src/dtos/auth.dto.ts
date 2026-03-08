@@ -53,18 +53,6 @@ export class AuthResponse {
   @Example(1772719299)
   accessTokenExpiresOn!: number;
 
-  @Example('d1f2e3c4b5a6...')
-  refreshToken!: string;
-
   @Example(1773324099)
   refreshTokenExpiresOn!: number;
-}
-
-export class RefreshRequest {
-  /**
-   * @isString Please provide a valid refresh token
-   * @minLength 1 Please provide a refresh token that is at least 1 character long
-   */
-  @Example('d1f2e3c4b5a6...')
-  refreshToken!: string;
 }

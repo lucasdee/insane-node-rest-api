@@ -4,22 +4,35 @@ import crypto from 'crypto';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { userRepository } from '../repositories/user.repository.js';
 import { tokenRepository } from '../repositories/token.repository.js';
-import { AuthResponse, LoginRequest, RegisterRequest } from '../dtos/auth.dto.js';
-import { User } from '../dtos/user.dto.js';
+import { LoginRequest, RegisterRequest } from '../dtos/auth.dto.js';
 import { AuthError } from '../errors.js';
+import { AuthTokens } from './types.js';
+import { User } from '../dtos/user.dto.js';
 import { Role } from '../generated/prisma/enums.js';
 
+const {
+  secret,
+  refreshSecret,
+  refreshHashSecret,
+  accessTokenExpiresInMinutes,
+  refreshTokenExpiresInDays,
+} = env.jwt;
+
 const createRefreshTokenHash = (refreshToken: string): string => {
-  return crypto.createHmac('sha512', env.jwtRefreshHashSecret).update(refreshToken).digest('hex');
+  return crypto.createHmac('sha512', refreshHashSecret).update(refreshToken).digest('hex');
 };
 
-const createTokens = async (userId: number): Promise<AuthResponse> => {
-  const secret = env.jwtSecret;
-  const refreshSecret = env.jwtRefreshSecret;
-  const accessToken = jwt.sign({ sub: userId }, secret, { expiresIn: '5m' });
-  const accessTokenExpiresOn = new Date(Date.now() + 5 * 60 * 1000);
-  const refreshToken = jwt.sign({ sub: userId }, refreshSecret, { expiresIn: '7d' });
-  const refreshTokenExpiresOn = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+const createTokens = async (userId: number): Promise<AuthTokens> => {
+  const accessToken = jwt.sign({ sub: userId }, secret, {
+    expiresIn: `${accessTokenExpiresInMinutes}m`,
+  });
+  const accessTokenExpiresOn = new Date(Date.now() + accessTokenExpiresInMinutes * 60 * 1000);
+  const refreshToken = jwt.sign({ sub: userId }, refreshSecret, {
+    expiresIn: `${refreshTokenExpiresInDays}d`,
+  });
+  const refreshTokenExpiresOn = new Date(
+    Date.now() + refreshTokenExpiresInDays * 24 * 60 * 60 * 1000,
+  );
   const refreshTokenHash = createRefreshTokenHash(refreshToken);
 
   await tokenRepository.saveRefreshToken(userId, refreshTokenHash, refreshTokenExpiresOn);
@@ -41,7 +54,7 @@ export class UserService {
     return userRepository.createUser({ username, password: hashed, email, displayName });
   }
 
-  async login({ username, password }: LoginRequest): Promise<AuthResponse> {
+  async login({ username, password }: LoginRequest): Promise<AuthTokens> {
     const user = await userRepository.findByUsername(username);
     if (!user) throw new AuthError('Invalid credentials');
 
@@ -53,14 +66,16 @@ export class UserService {
     return authResponse;
   }
 
-  async refreshAccessToken(currentRefreshToken: string): Promise<AuthResponse> {
-    const verified = jwt.verify(currentRefreshToken, env.jwtRefreshSecret) as JwtPayload;
-    if (typeof verified === 'string' || !verified.sub) throw new AuthError('Verification of refresh token failed');
+  async refreshAccessToken(currentRefreshToken: string): Promise<AuthTokens> {
+    const verified = jwt.verify(currentRefreshToken, refreshSecret) as JwtPayload;
+    if (typeof verified === 'string' || !verified.sub)
+      throw new AuthError('Verification of refresh token failed');
 
     const currentRefreshTokenHash = createRefreshTokenHash(currentRefreshToken);
 
     const storedToken = await tokenRepository.findRefreshToken(currentRefreshTokenHash);
-    if (!storedToken) throw new AuthError('Could not find refresh token in database, it might have been revoked');
+    if (!storedToken)
+      throw new AuthError('Could not find refresh token in database, it might have been revoked');
 
     const userId = parseInt(verified.sub, 10);
 
@@ -82,7 +97,7 @@ export class UserService {
   }
 
   async logout(refreshToken: string): Promise<void> {
-    const verified = jwt.verify(refreshToken, env.jwtRefreshSecret) as JwtPayload;
+    const verified = jwt.verify(refreshToken, refreshSecret) as JwtPayload;
     if (typeof verified === 'string' || !verified.sub) throw new AuthError('Invalid refresh token');
 
     const refreshTokenHash = createRefreshTokenHash(refreshToken);

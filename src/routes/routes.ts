@@ -94,7 +94,6 @@ const models: TsoaRoute.Models = {
         "properties": {
             "accessToken": {"dataType":"string","required":true},
             "accessTokenExpiresOn": {"dataType":"double","required":true},
-            "refreshToken": {"dataType":"string","required":true},
             "refreshTokenExpiresOn": {"dataType":"double","required":true},
         },
         "additionalProperties": false,
@@ -105,14 +104,6 @@ const models: TsoaRoute.Models = {
         "properties": {
             "username": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid username"},"minLength":{"errorMsg":"Please provide a username that is at least 1 character long","value":1}}},
             "password": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid password"},"minLength":{"errorMsg":"Please provide a password that is at least 1 character long","value":1}}},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "RefreshRequest": {
-        "dataType": "refObject",
-        "properties": {
-            "refreshToken": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid refresh token"},"minLength":{"errorMsg":"Please provide a refresh token that is at least 1 character long","value":1}}},
         },
         "additionalProperties": false,
     },
@@ -321,7 +312,7 @@ export function RegisterRoutes(app: Router) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAuthController_refresh: Record<string, TsoaRoute.ParameterSchema> = {
-                body: {"in":"body","name":"body","required":true,"ref":"RefreshRequest"},
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.post('/auth/refresh',
             ...(fetchMiddlewares<RequestHandler>(AuthController)),
@@ -351,7 +342,7 @@ export function RegisterRoutes(app: Router) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAuthController_logout: Record<string, TsoaRoute.ParameterSchema> = {
-                body: {"in":"body","name":"body","required":true,"ref":"RefreshRequest"},
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.post('/auth/logout',
             authenticateMiddleware([{"jwt":[]}]),

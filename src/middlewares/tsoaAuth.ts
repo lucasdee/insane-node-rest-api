@@ -17,7 +17,7 @@ export const expressAuthentication = async (
   }
 
   const token = authHeader.substring(7);
-  const secret = env.jwtSecret;
+  const secret = env.jwt.secret;
 
   try {
     const decoded = jwt.verify(token, secret) as JwtPayload;
