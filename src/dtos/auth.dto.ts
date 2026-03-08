@@ -47,6 +47,12 @@ export class LoginRequest {
 }
 
 export class AuthResponse {
-  @Example('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...')
-  token!: string;
+  @Example('eyJhbGciOiJI...')
+  accessToken!: string;
+
+  @Example(1772719299)
+  accessTokenExpiresOn!: number;
+
+  @Example(1773324099)
+  refreshTokenExpiresOn!: number;
 }

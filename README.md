@@ -7,7 +7,7 @@ A compact, fully-typed REST API starter using Node.js, TypeScript, Express, Pris
 - TypeScript + Express server
 - Prisma ORM with generated client
 - OpenAPI (Swagger) generation via `tsoa`
-- JWT authentication and basic user controller
+- JWT authentication with refresh tokens and basic user controller
 - ESLint, Prettier and Vitest for linting, formatting and tests
 
 ## Prerequisites
@@ -21,14 +21,20 @@ A compact, fully-typed REST API starter using Node.js, TypeScript, Express, Pris
 Create a `.env` file in the project root with the following values:
 
 ```
+NODE_ENV=development
 PORT=3000
-JWT_SECRET=your_jwt_secret
-DATABASE_USER=your_db_user
-DATABASE_PASSWORD=your_db_password
-DATABASE_HOST=127.0.0.1
-DATABASE_PORT=3306
-DATABASE_NAME=your_db_name
-SHADOW_DATABASE_NAME=your_shadow_db_name
+CORS_ORIGIN=http://localhost:3000
+JWT_SECRET=super-secret
+JWT_REFRESH_SECRET=super-refresh-secret
+JWT_REFRESH_HASH_SECRET=super-refresh-hash-secret
+JWT_ACCESS_TOKEN_EXPIRES_IN_MINUTES=5
+JWT_REFRESH_TOKEN_EXPIRES_IN_DAYS=7
+DATABASE_USER=db_user
+DATABASE_PASSWORD=db_password
+DATABASE_NAME=db_name
+DATABASE_HOST=db_host
+DATABASE_PORT=db_port
+SHADOW_DATABASE_NAME=shadow_db_name
 ```
 
 ## Install
