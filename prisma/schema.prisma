@@ -26,9 +26,21 @@ model User {
   displayName   String?   @db.VarChar(64)
   role          Role      @default(USER)
   createdAt     DateTime  @default(now())
+  refreshTokens RefreshToken[]
   notes         NoteOnUser[]
   notesAuthored Note[]
   notesAssigned NoteOnUser[] @relation("assignedBy")
+}
+
+model RefreshToken {
+  @@map("refresh_tokens")
+  id        BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  tokenHash String   @unique @db.VarChar(128)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int      @db.UnsignedInt
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revoked   Boolean  @default(false)
 }
 
 model Note {

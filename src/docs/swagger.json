@@ -209,13 +209,30 @@
 			},
 			"AuthResponse": {
 				"properties": {
-					"token": {
+					"accessToken": {
 						"type": "string",
-						"example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+						"example": "eyJhbGciOiJI..."
+					},
+					"accessTokenExpiresOn": {
+						"type": "number",
+						"format": "double",
+						"example": 1772719299
+					},
+					"refreshToken": {
+						"type": "string",
+						"example": "d1f2e3c4b5a6..."
+					},
+					"refreshTokenExpiresOn": {
+						"type": "number",
+						"format": "double",
+						"example": 1773324099
 					}
 				},
 				"required": [
-					"token"
+					"accessToken",
+					"accessTokenExpiresOn",
+					"refreshToken",
+					"refreshTokenExpiresOn"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -236,6 +253,20 @@
 				"required": [
 					"username",
 					"password"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"RefreshRequest": {
+				"properties": {
+					"refreshToken": {
+						"type": "string",
+						"example": "d1f2e3c4b5a6...",
+						"minLength": 1
+					}
+				},
+				"required": [
+					"refreshToken"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -449,6 +480,86 @@
 						}
 					}
 				}
+			}
+		},
+		"/auth/refresh": {
+			"post": {
+				"operationId": "Refresh",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AuthResponse"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Auth"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RefreshRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/logout": {
+			"post": {
+				"operationId": "Logout",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"tags": [
+					"Auth"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RefreshRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/revoke-expired-tokens": {
+			"post": {
+				"operationId": "RevokeExpiredTokens",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"tags": [
+					"Auth"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
 			}
 		}
 	},

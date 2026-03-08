@@ -92,7 +92,10 @@ const models: TsoaRoute.Models = {
     "AuthResponse": {
         "dataType": "refObject",
         "properties": {
-            "token": {"dataType":"string","required":true},
+            "accessToken": {"dataType":"string","required":true},
+            "accessTokenExpiresOn": {"dataType":"double","required":true},
+            "refreshToken": {"dataType":"string","required":true},
+            "refreshTokenExpiresOn": {"dataType":"double","required":true},
         },
         "additionalProperties": false,
     },
@@ -102,6 +105,14 @@ const models: TsoaRoute.Models = {
         "properties": {
             "username": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid username"},"minLength":{"errorMsg":"Please provide a username that is at least 1 character long","value":1}}},
             "password": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid password"},"minLength":{"errorMsg":"Please provide a password that is at least 1 character long","value":1}}},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "RefreshRequest": {
+        "dataType": "refObject",
+        "properties": {
+            "refreshToken": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid refresh token"},"minLength":{"errorMsg":"Please provide a refresh token that is at least 1 character long","value":1}}},
         },
         "additionalProperties": false,
     },
@@ -298,6 +309,98 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'login',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsAuthController_refresh: Record<string, TsoaRoute.ParameterSchema> = {
+                body: {"in":"body","name":"body","required":true,"ref":"RefreshRequest"},
+        };
+        app.post('/auth/refresh',
+            ...(fetchMiddlewares<RequestHandler>(AuthController)),
+            ...(fetchMiddlewares<RequestHandler>(AuthController.prototype.refresh)),
+
+            async function AuthController_refresh(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsAuthController_refresh, request, response });
+
+                const controller = new AuthController();
+
+              await templateService.apiHandler({
+                methodName: 'refresh',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsAuthController_logout: Record<string, TsoaRoute.ParameterSchema> = {
+                body: {"in":"body","name":"body","required":true,"ref":"RefreshRequest"},
+        };
+        app.post('/auth/logout',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(AuthController)),
+            ...(fetchMiddlewares<RequestHandler>(AuthController.prototype.logout)),
+
+            async function AuthController_logout(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsAuthController_logout, request, response });
+
+                const controller = new AuthController();
+
+              await templateService.apiHandler({
+                methodName: 'logout',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsAuthController_revokeExpiredTokens: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+        };
+        app.post('/auth/revoke-expired-tokens',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(AuthController)),
+            ...(fetchMiddlewares<RequestHandler>(AuthController.prototype.revokeExpiredTokens)),
+
+            async function AuthController_revokeExpiredTokens(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsAuthController_revokeExpiredTokens, request, response });
+
+                const controller = new AuthController();
+
+              await templateService.apiHandler({
+                methodName: 'revokeExpiredTokens',
                 controller,
                 response,
                 next,

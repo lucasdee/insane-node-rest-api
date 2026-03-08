@@ -6,6 +6,14 @@ if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET is not defined in environment variables');
 }
 
+if (!process.env.JWT_REFRESH_SECRET) {
+  throw new Error('JWT_REFRESH_SECRET is not defined in environment variables');
+}
+
+if (!process.env.JWT_REFRESH_HASH_SECRET) {
+  throw new Error('JWT_REFRESH_HASH_SECRET is not defined in environment variables');
+}
+
 if (!process.env.PORT) {
   throw new Error('PORT is not defined in environment variables');
 }
@@ -37,6 +45,8 @@ if (!process.env.DATABASE_PORT) {
 export const env = {
   port: process.env.PORT,
   jwtSecret: process.env.JWT_SECRET,
+  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
+  jwtRefreshHashSecret: process.env.JWT_REFRESH_HASH_SECRET,
   db: {
     user: process.env.DATABASE_USER,
     password: process.env.DATABASE_PASSWORD,
