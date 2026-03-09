@@ -1,7 +1,7 @@
 import { Controller, Get, Route, Security, Tags, Request, Post, Body } from '@tsoa/runtime';
-import { AuthenticatedRequest } from './types.js';
-import { noteService } from '../services/note.service.js';
-import { Note, NoteOnUser, NoteCreateRequest, NoteOnUserCreateRequest } from '../dtos/note.dto.js';
+import { AuthenticatedRequest } from './types';
+import { noteService } from '../services/note.service';
+import { Note, NoteOnUser, NoteCreateRequest, NoteOnUserCreateRequest } from '../dtos/note.dto';
 
 @Route('notes')
 @Tags('Notes')

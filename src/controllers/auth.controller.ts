@@ -1,11 +1,11 @@
 import { Body, Controller, Post, Route, Tags, Security, Response, Request } from '@tsoa/runtime';
 import type { Request as ExpressRequest } from 'express';
-import { buildRefreshCookie, clearRefreshCookie } from '../utils/cookie.js';
-import { userService } from '../services/user.service.js';
-import { LoginRequest, RegisterRequest, AuthResponse } from '../dtos/auth.dto.js';
-import { User } from '../dtos/user.dto.js';
-import { AuthenticatedRequest } from './types.js';
-import { AuthError } from '../errors.js';
+import { buildRefreshCookie, clearRefreshCookie } from '../utils/cookie';
+import { userService } from '../services/user.service';
+import { LoginRequest, RegisterRequest, AuthResponse } from '../dtos/auth.dto';
+import { User } from '../dtos/user.dto';
+import { AuthenticatedRequest } from './types';
+import { AuthError } from '../errors';
 
 @Route('auth')
 @Tags('Auth')

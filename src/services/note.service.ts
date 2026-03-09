@@ -1,7 +1,7 @@
-import { noteRepository } from '../repositories/note.repository.js';
-import { Note, NoteOnUser } from '../dtos/note.dto.js';
-import { Role } from '../generated/prisma/enums.js';
-import { ForbiddenError } from '../errors.js';
+import { noteRepository } from '../repositories/note.repository';
+import { Note, NoteOnUser } from '../dtos/note.dto';
+import { Role } from '../generated/prisma/enums';
+import { ForbiddenError } from '../errors';
 
 export class NoteService {
   async listUserNotes(userId: number): Promise<NoteOnUser[]> {
