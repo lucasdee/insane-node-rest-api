@@ -1,7 +1,7 @@
 import { Example } from 'tsoa';
 
 export class Note {
-  @Example("123e4567-e89b-12d3-a456-426614174000")
+  @Example('123e4567-e89b-12d3-a456-426614174000')
   uuid!: string;
 
   @Example('My first note')
@@ -30,7 +30,7 @@ export class NoteOnUser {
   @Example('2024-01-01T00:00:00.000Z')
   assignedAt!: Date;
 
-  @Example("USER")
+  @Example('USER')
   role!: 'USER' | 'MOD' | 'ADMIN';
 
   @Example(Note)
@@ -38,20 +38,31 @@ export class NoteOnUser {
 }
 
 export class NoteCreateRequest {
+  /**
+   * @isString Please provide a valid title
+   * @minLength 3 Please provide a title that is at least 3 characters long
+   */
   @Example('My first note')
   title!: string;
 
+  /**
+   * @isString Please provide valid content
+   * @minLength 3 Please provide content that is at least 3 characters long
+   */
   @Example('This is the content of my first note.')
   content!: string;
-
-  @Example(1)
-  authorId!: number;
 }
 
 export class NoteOnUserCreateRequest {
+  /**
+   * @isInt Please provide a valid note ID
+   */
   @Example(1)
   noteId!: number;
 
+  /**
+   * @isInt Please provide a valid user ID
+   */
   @Example(1)
   userId!: number;
 }
