@@ -1,14 +1,14 @@
-import { env } from '../config/env.js';
+import { env } from '../config/env';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import jwt, { JwtPayload } from 'jsonwebtoken';
-import { userRepository } from '../repositories/user.repository.js';
-import { tokenRepository } from '../repositories/token.repository.js';
-import { LoginRequest, RegisterRequest } from '../dtos/auth.dto.js';
-import { AuthError } from '../errors.js';
-import { AuthTokens } from './types.js';
-import { User } from '../dtos/user.dto.js';
-import { Role } from '../generated/prisma/enums.js';
+import { userRepository } from '../repositories/user.repository';
+import { tokenRepository } from '../repositories/token.repository';
+import { LoginRequest, RegisterRequest } from '../dtos/auth.dto';
+import { AuthError } from '../errors';
+import { AuthTokens } from './types';
+import { User } from '../dtos/user.dto';
+import { Role } from '../generated/prisma/enums';
 
 const {
   secret,

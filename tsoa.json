@@ -19,7 +19,6 @@
     "routesDir": "src/routes",
     "authenticationModule": "src/middlewares/tsoaAuth.ts",
     "middleware": "express",
-    "validation": true,
-    "esm": true
+    "validation": true
   }
 }

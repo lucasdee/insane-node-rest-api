@@ -1,6 +1,6 @@
 import { ValidateError } from '@tsoa/runtime';
 import { Request, Response, NextFunction } from 'express';
-import { AuthError, ForbiddenError } from '../errors.js';
+import { AuthError, ForbiddenError } from '../errors';
 
 export function errorHandler(
   err: unknown,

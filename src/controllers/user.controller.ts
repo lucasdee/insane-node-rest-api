@@ -1,7 +1,7 @@
 import { Controller, Get, Route, Security, Tags, Request } from '@tsoa/runtime';
-import { AuthenticatedRequest } from './types.js';
-import { userService } from '../services/user.service.js';
-import { User } from '../dtos/user.dto.js';
+import { AuthenticatedRequest } from './types';
+import { userService } from '../services/user.service';
+import { User } from '../dtos/user.dto';
 
 @Route('users')
 @Tags('Users')

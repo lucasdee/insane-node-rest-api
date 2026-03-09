@@ -5,16 +5,12 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
 import { createStream } from 'rotating-file-stream';
 
-import { swaggerRouter } from './docs/openapi.js';
-import { RegisterRoutes } from './routes/routes.js';
-import { errorHandler } from './middlewares/errorHandler.js';
-import { env } from './config/env.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { swaggerRouter } from './docs/openapi';
+import { RegisterRoutes } from './routes/routes';
+import { errorHandler } from './middlewares/errorHandler';
+import { env } from './config/env';
 
 const logsDir = path.join(__dirname, 'logs');
 fs.mkdirSync(logsDir, { recursive: true });

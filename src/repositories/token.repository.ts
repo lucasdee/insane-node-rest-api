@@ -1,5 +1,5 @@
-import { prisma } from '../config/db.js';
-import { RefreshToken } from 'src/generated/prisma/client.js';
+import { prisma } from '../config/db';
+import { RefreshToken } from 'src/generated/prisma/client';
 
 export class TokenRepository {
   async saveRefreshToken(userId: number, tokenHash: string, expiresAt: Date): Promise<RefreshToken> {

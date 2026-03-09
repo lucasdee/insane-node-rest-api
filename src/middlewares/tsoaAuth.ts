@@ -1,7 +1,7 @@
-import { env } from '../config/env.js';
+import { env } from '../config/env';
 import jwt, { type JwtPayload } from 'jsonwebtoken';
 import type { Request } from 'express';
-import { AuthError } from '../errors.js';
+import { AuthError } from '../errors';
 
 export const expressAuthentication = async (
   req: Request,

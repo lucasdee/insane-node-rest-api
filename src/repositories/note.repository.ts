@@ -1,6 +1,6 @@
-import { prisma } from '../config/db.js';
-import { Role } from '../generated/prisma/enums.js';
-import { NoteGetPayload, NoteOnUserGetPayload } from '../generated/prisma/models.js';
+import { prisma } from '../config/db';
+import { Role } from '../generated/prisma/enums';
+import { NoteGetPayload, NoteOnUserGetPayload } from '../generated/prisma/models';
 
 export class NoteRepository {
   async listUserNotes(
