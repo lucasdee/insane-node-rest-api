@@ -8,8 +8,6 @@ import { UserController } from './../controllers/user.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { NotesController } from './../controllers/note.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-import { NoteController } from './../controllers/note.controller';
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { AuthController } from './../controllers/auth.controller';
 import { expressAuthentication } from './../middlewares/tsoaAuth';
 // @ts-ignore - no great way to install types from subpackage
@@ -62,9 +60,8 @@ const models: TsoaRoute.Models = {
     "NoteCreateRequest": {
         "dataType": "refObject",
         "properties": {
-            "title": {"dataType":"string","required":true},
-            "content": {"dataType":"string","required":true},
-            "authorId": {"dataType":"double","required":true},
+            "title": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid title"},"minLength":{"errorMsg":"Please provide a title that is at least 3 characters long","value":3}}},
+            "content": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide valid content"},"minLength":{"errorMsg":"Please provide content that is at least 3 characters long","value":3}}},
         },
         "additionalProperties": false,
     },
@@ -72,8 +69,8 @@ const models: TsoaRoute.Models = {
     "NoteOnUserCreateRequest": {
         "dataType": "refObject",
         "properties": {
-            "noteId": {"dataType":"double","required":true},
-            "userId": {"dataType":"double","required":true},
+            "noteId": {"dataType":"integer","required":true,"validators":{"isInt":{"errorMsg":"Please provide a valid note ID"}}},
+            "userId": {"dataType":"integer","required":true,"validators":{"isInt":{"errorMsg":"Please provide a valid user ID"}}},
         },
         "additionalProperties": false,
     },
@@ -187,24 +184,24 @@ export function RegisterRoutes(app: Router) {
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsNoteController_createNote: Record<string, TsoaRoute.ParameterSchema> = {
+        const argsNotesController_createNote: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 body: {"in":"body","name":"body","required":true,"ref":"NoteCreateRequest"},
         };
-        app.post('/note/create',
+        app.post('/notes/create',
             authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<RequestHandler>(NoteController)),
-            ...(fetchMiddlewares<RequestHandler>(NoteController.prototype.createNote)),
+            ...(fetchMiddlewares<RequestHandler>(NotesController)),
+            ...(fetchMiddlewares<RequestHandler>(NotesController.prototype.createNote)),
 
-            async function NoteController_createNote(request: ExRequest, response: ExResponse, next: any) {
+            async function NotesController_createNote(request: ExRequest, response: ExResponse, next: any) {
 
             // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
             let validatedArgs: any[] = [];
             try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsNoteController_createNote, request, response });
+                validatedArgs = templateService.getValidatedArgs({ args: argsNotesController_createNote, request, response });
 
-                const controller = new NoteController();
+                const controller = new NotesController();
 
               await templateService.apiHandler({
                 methodName: 'createNote',
@@ -219,24 +216,24 @@ export function RegisterRoutes(app: Router) {
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsNoteController_assignNoteToUser: Record<string, TsoaRoute.ParameterSchema> = {
+        const argsNotesController_assignNoteToUser: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 body: {"in":"body","name":"body","required":true,"ref":"NoteOnUserCreateRequest"},
         };
-        app.post('/note/assign',
+        app.post('/notes/assign',
             authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<RequestHandler>(NoteController)),
-            ...(fetchMiddlewares<RequestHandler>(NoteController.prototype.assignNoteToUser)),
+            ...(fetchMiddlewares<RequestHandler>(NotesController)),
+            ...(fetchMiddlewares<RequestHandler>(NotesController.prototype.assignNoteToUser)),
 
-            async function NoteController_assignNoteToUser(request: ExRequest, response: ExResponse, next: any) {
+            async function NotesController_assignNoteToUser(request: ExRequest, response: ExResponse, next: any) {
 
             // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
             let validatedArgs: any[] = [];
             try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsNoteController_assignNoteToUser, request, response });
+                validatedArgs = templateService.getValidatedArgs({ args: argsNotesController_assignNoteToUser, request, response });
 
-                const controller = new NoteController();
+                const controller = new NotesController();
 
               await templateService.apiHandler({
                 methodName: 'assignNoteToUser',

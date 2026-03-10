@@ -135,22 +135,18 @@
 				"properties": {
 					"title": {
 						"type": "string",
-						"example": "My first note"
+						"example": "My first note",
+						"minLength": 3
 					},
 					"content": {
 						"type": "string",
-						"example": "This is the content of my first note."
-					},
-					"authorId": {
-						"type": "number",
-						"format": "double",
-						"example": 1
+						"example": "This is the content of my first note.",
+						"minLength": 3
 					}
 				},
 				"required": [
 					"title",
-					"content",
-					"authorId"
+					"content"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -158,13 +154,13 @@
 			"NoteOnUserCreateRequest": {
 				"properties": {
 					"noteId": {
-						"type": "number",
-						"format": "double",
+						"type": "integer",
+						"format": "int32",
 						"example": 1
 					},
 					"userId": {
-						"type": "number",
-						"format": "double",
+						"type": "integer",
+						"format": "int32",
 						"example": 1
 					}
 				},
@@ -327,7 +323,7 @@
 				"parameters": []
 			}
 		},
-		"/note/create": {
+		"/notes/create": {
 			"post": {
 				"operationId": "CreateNote",
 				"responses": {
@@ -343,7 +339,7 @@
 					}
 				},
 				"tags": [
-					"Note"
+					"Notes"
 				],
 				"security": [
 					{
@@ -363,7 +359,7 @@
 				}
 			}
 		},
-		"/note/assign": {
+		"/notes/assign": {
 			"post": {
 				"operationId": "AssignNoteToUser",
 				"responses": {
@@ -379,7 +375,7 @@
 					}
 				},
 				"tags": [
-					"Note"
+					"Notes"
 				],
 				"security": [
 					{
