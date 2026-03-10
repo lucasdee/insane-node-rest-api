@@ -12,11 +12,7 @@ export class NotesController extends Controller {
     const userId = req.user!.sub;
     return await noteService.listUserNotes(parseInt(userId, 10));
   }
-}
 
-@Route('note')
-@Tags('Note')
-export class NoteController extends Controller {
   @Post('create')
   @Security('jwt')
   public async createNote(
