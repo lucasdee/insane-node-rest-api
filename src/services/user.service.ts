@@ -47,15 +47,14 @@ const createTokens = async (userId: number): Promise<AuthTokens> => {
 
 export class UserService {
   async register({ username, password, email, displayName }: RegisterRequest): Promise<User> {
-    const existing = await userRepository.findByUsername(username);
-    if (existing) throw new AuthError('User already exists');
+    if (await userRepository.existsByUsername(username)) throw new AuthError('User already exists');
 
     const hashed = await bcrypt.hash(password, 12);
     return userRepository.createUser({ username, password: hashed, email, displayName });
   }
 
   async login({ username, password }: LoginRequest): Promise<AuthTokens> {
-    const user = await userRepository.findByUsername(username);
+    const user = await userRepository.findCredentialsByUsername(username);
     if (!user) throw new AuthError('Invalid credentials');
 
     const match = await bcrypt.compare(password, user.password);

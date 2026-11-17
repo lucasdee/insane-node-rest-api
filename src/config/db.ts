@@ -11,4 +11,8 @@ const adapter = new PrismaMariaDb({
   connectionLimit: 5,
 });
 
-export const prisma = new PrismaClient({ adapter });
+export const prisma = new PrismaClient({
+  adapter,
+  // Safety net: never load password hashes unless a query explicitly selects them.
+  omit: { user: { password: true } },
+});
