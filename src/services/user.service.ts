@@ -22,6 +22,25 @@ const createRefreshTokenHash = (refreshToken: string): string => {
   return crypto.createHmac('sha512', refreshHashSecret).update(refreshToken).digest('hex');
 };
 
+/**
+ * Verifies a refresh token's signature and expiry and returns its subject.
+ * Any failure is reported as an AuthError (401), never as a raw jsonwebtoken error.
+ */
+const verifyRefreshToken = (refreshToken: string): string => {
+  let payload: string | JwtPayload;
+  try {
+    payload = jwt.verify(refreshToken, refreshSecret);
+  } catch {
+    throw new AuthError('Invalid or expired refresh token');
+  }
+
+  if (typeof payload === 'string' || payload.sub === undefined) {
+    throw new AuthError('Invalid or expired refresh token');
+  }
+
+  return String(payload.sub);
+};
+
 const createTokens = async (userId: number): Promise<AuthTokens> => {
   const accessToken = jwt.sign({ sub: userId }, secret, {
     expiresIn: `${accessTokenExpiresInMinutes}m`,
@@ -66,9 +85,7 @@ export class UserService {
   }
 
   async refreshAccessToken(currentRefreshToken: string): Promise<AuthTokens> {
-    const verified = jwt.verify(currentRefreshToken, refreshSecret) as JwtPayload;
-    if (typeof verified === 'string' || !verified.sub)
-      throw new AuthError('Verification of refresh token failed');
+    const subject = verifyRefreshToken(currentRefreshToken);
 
     const currentRefreshTokenHash = createRefreshTokenHash(currentRefreshToken);
 
@@ -76,7 +93,7 @@ export class UserService {
     if (!storedToken)
       throw new AuthError('Could not find refresh token in database, it might have been revoked');
 
-    const userId = parseInt(verified.sub, 10);
+    const userId = parseInt(subject, 10);
 
     if (storedToken.userId !== userId) {
       await tokenRepository.revokeRefreshToken(currentRefreshTokenHash);
@@ -96,8 +113,7 @@ export class UserService {
   }
 
   async logout(refreshToken: string): Promise<void> {
-    const verified = jwt.verify(refreshToken, refreshSecret) as JwtPayload;
-    if (typeof verified === 'string' || !verified.sub) throw new AuthError('Invalid refresh token');
+    verifyRefreshToken(refreshToken);
 
     const refreshTokenHash = createRefreshTokenHash(refreshToken);
 
