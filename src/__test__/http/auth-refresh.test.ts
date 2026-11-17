@@ -8,7 +8,8 @@ type RefreshTokenRow = { tokenHash: string; userId: number; expiresAt: Date };
 
 /**
  * In-memory stand-in for prisma.refreshToken with Prisma's semantics:
- * `delete` throws (P2025) when the row is missing, `deleteMany` returns a count.
+ * `create` throws (P2002) on a duplicate tokenHash, `delete` throws (P2025)
+ * when the row is missing, `deleteMany` returns a count.
  */
 const { store, refreshToken } = vi.hoisted(() => {
   const store = new Map<string, RefreshTokenRow>();
@@ -22,6 +23,9 @@ const { store, refreshToken } = vi.hoisted(() => {
       return row ? { ...row } : null;
     }),
     create: vi.fn(async ({ data }: { data: RefreshTokenRow }) => {
+      if (store.has(data.tokenHash)) {
+        throw Object.assign(new Error('Unique constraint failed on tokenHash'), { code: 'P2002' });
+      }
       store.set(data.tokenHash, { ...data });
       return { ...data };
     }),
@@ -53,9 +57,8 @@ vi.mock('../../config/db', () => ({ prisma: { refreshToken } }));
 
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET!;
 
-// Backdated `iat` so the app never issues a byte-identical token in the same second.
 const refreshTokenFor = (userId: number, secret = REFRESH_SECRET) =>
-  jwt.sign({ sub: userId, iat: Math.floor(Date.now() / 1000) - 60 }, secret, { expiresIn: '7d' });
+  jwt.sign({ sub: userId }, secret, { expiresIn: '7d' });
 
 const expiredRefreshTokenFor = (userId: number) =>
   jwt.sign({ sub: userId, exp: Math.floor(Date.now() / 1000) - 60 }, REFRESH_SECRET);

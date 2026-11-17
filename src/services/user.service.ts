@@ -42,12 +42,17 @@ const verifyRefreshToken = (refreshToken: string): string => {
 };
 
 const createTokens = async (userId: number): Promise<AuthTokens> => {
+  // A random `jti` makes every token unique. Without it, tokens issued for the same
+  // user within the same second are identical, and the refresh token hash collides
+  // with the unique constraint on refresh_tokens.tokenHash.
   const accessToken = jwt.sign({ sub: userId }, secret, {
     expiresIn: `${accessTokenExpiresInMinutes}m`,
+    jwtid: crypto.randomUUID(),
   });
   const accessTokenExpiresOn = new Date(Date.now() + accessTokenExpiresInMinutes * 60 * 1000);
   const refreshToken = jwt.sign({ sub: userId }, refreshSecret, {
     expiresIn: `${refreshTokenExpiresInDays}d`,
+    jwtid: crypto.randomUUID(),
   });
   const refreshTokenExpiresOn = new Date(
     Date.now() + refreshTokenExpiresInDays * 24 * 60 * 60 * 1000,
