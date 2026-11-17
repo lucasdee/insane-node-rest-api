@@ -105,7 +105,9 @@ export class UserService {
       throw new AuthError('Refresh token expired');
     }
 
-    await tokenRepository.revokeRefreshToken(currentRefreshTokenHash);
+    // Only the request that actually removes the token may rotate it.
+    const revoked = await tokenRepository.revokeRefreshToken(currentRefreshTokenHash);
+    if (!revoked) throw new AuthError('Refresh token has already been used');
 
     const authResponse = await createTokens(userId);
 
@@ -117,6 +119,7 @@ export class UserService {
 
     const refreshTokenHash = createRefreshTokenHash(refreshToken);
 
+    // Idempotent: logging out with an already revoked token still succeeds.
     await tokenRepository.revokeRefreshToken(refreshTokenHash);
   }
 

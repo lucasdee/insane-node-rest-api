@@ -2,7 +2,11 @@ import { prisma } from '../config/db';
 import { RefreshToken } from 'src/generated/prisma/client';
 
 export class TokenRepository {
-  async saveRefreshToken(userId: number, tokenHash: string, expiresAt: Date): Promise<RefreshToken> {
+  async saveRefreshToken(
+    userId: number,
+    tokenHash: string,
+    expiresAt: Date,
+  ): Promise<RefreshToken> {
     return prisma.refreshToken.create({
       data: {
         userId,
@@ -18,10 +22,16 @@ export class TokenRepository {
     });
   }
 
-  async revokeRefreshToken(tokenHash: string): Promise<RefreshToken | null> {
-    return prisma.refreshToken.delete({
+  /**
+   * Idempotent: revoking a token that is already gone is not an error.
+   * Returns true only if this call removed the token, so callers can detect
+   * a token that was used concurrently.
+   */
+  async revokeRefreshToken(tokenHash: string): Promise<boolean> {
+    const { count } = await prisma.refreshToken.deleteMany({
       where: { tokenHash },
     });
+    return count > 0;
   }
 
   async revokeAllUserRefreshTokens(userId: number): Promise<{ count: number }> {
