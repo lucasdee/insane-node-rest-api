@@ -1,6 +1,6 @@
 import { ValidateError } from '@tsoa/runtime';
 import { Request, Response, NextFunction } from 'express';
-import { AuthError, ForbiddenError } from '../errors';
+import { AuthError, ForbiddenError, NotFoundError } from '../errors';
 
 export function errorHandler(
   err: unknown,
@@ -23,7 +23,14 @@ export function errorHandler(
       message: err.message,
     });
   }
-  
+
+  // Missing resources
+  if (err instanceof NotFoundError) {
+    return res.status(404).json({
+      message: err.message,
+    });
+  }
+
   // Authentication errors
   if (err instanceof AuthError) {
     return res.status(401).json({

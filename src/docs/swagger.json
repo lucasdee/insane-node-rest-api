@@ -281,6 +281,9 @@
 								}
 							}
 						}
+					},
+					"404": {
+						"description": "User not found"
 					}
 				},
 				"tags": [
