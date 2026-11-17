@@ -23,6 +23,9 @@ export default defineConfig({
     },
     coverage: {
       provider: 'v8',
+      include: ['src/**/*.ts'],
+      // Generated code (Prisma client, tsoa routes) and the tests themselves.
+      exclude: ['src/generated/**', 'src/routes/**', 'src/__test__/**'],
       reporter: ['text', 'html'],
       reportsDirectory: './coverage',
     },
