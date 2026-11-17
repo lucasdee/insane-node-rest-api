@@ -5,7 +5,7 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import { userRepository } from '../repositories/user.repository';
 import { tokenRepository } from '../repositories/token.repository';
 import { LoginRequest, RegisterRequest } from '../dtos/auth.dto';
-import { AuthError } from '../errors';
+import { AuthError, ConflictError, ForbiddenError } from '../errors';
 import { AuthTokens } from './types';
 import { User } from '../dtos/user.dto';
 import { Role } from '../generated/prisma/enums';
@@ -71,7 +71,9 @@ const createTokens = async (userId: number): Promise<AuthTokens> => {
 
 export class UserService {
   async register({ username, password, email, displayName }: RegisterRequest): Promise<User> {
-    if (await userRepository.existsByUsername(username)) throw new AuthError('User already exists');
+    if (await userRepository.existsByUsername(username)) {
+      throw new ConflictError('Username is already taken');
+    }
 
     const hashed = await bcrypt.hash(password, 12);
     return userRepository.createUser({ username, password: hashed, email, displayName });
@@ -130,7 +132,9 @@ export class UserService {
 
   async revokeExpiredTokens(userId: number): Promise<void> {
     const user = await userRepository.findById(userId);
-    if (user?.role !== Role.ADMIN) throw new AuthError('Unauthorized');
+    if (user?.role !== Role.ADMIN) {
+      throw new ForbiddenError('Only admins can revoke expired tokens');
+    }
 
     await tokenRepository.revokeExpiredTokens();
   }

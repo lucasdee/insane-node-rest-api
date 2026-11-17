@@ -11,6 +11,7 @@ import { AuthError } from '../errors';
 @Tags('Auth')
 export class AuthController extends Controller {
   @Post('register')
+  @Response(409, 'Username is already taken')
   public async register(@Body() body: RegisterRequest): Promise<User> {
     const user = await userService.register(body);
     return user;
@@ -19,7 +20,10 @@ export class AuthController extends Controller {
   @Post('login')
   public async login(@Body() body: LoginRequest): Promise<AuthResponse> {
     const tokens = await userService.login(body);
-    this.setHeader('Set-Cookie', buildRefreshCookie(tokens.refreshToken, tokens.refreshTokenExpiresOn));
+    this.setHeader(
+      'Set-Cookie',
+      buildRefreshCookie(tokens.refreshToken, tokens.refreshTokenExpiresOn),
+    );
     return {
       accessToken: tokens.accessToken,
       accessTokenExpiresOn: tokens.accessTokenExpiresOn,
@@ -32,7 +36,10 @@ export class AuthController extends Controller {
     const refreshToken = req.cookies?.refreshToken as string | undefined;
     if (!refreshToken) throw new AuthError('No refresh token in cookie');
     const tokens = await userService.refreshAccessToken(refreshToken);
-    this.setHeader('Set-Cookie', buildRefreshCookie(tokens.refreshToken, tokens.refreshTokenExpiresOn));
+    this.setHeader(
+      'Set-Cookie',
+      buildRefreshCookie(tokens.refreshToken, tokens.refreshTokenExpiresOn),
+    );
     return {
       accessToken: tokens.accessToken,
       accessTokenExpiresOn: tokens.accessTokenExpiresOn,
@@ -53,6 +60,7 @@ export class AuthController extends Controller {
   @Post('revoke-expired-tokens')
   @Security('jwt')
   @Response(204, 'No Content')
+  @Response(403, 'Only admins can revoke expired tokens')
   public async revokeExpiredTokens(@Request() req: AuthenticatedRequest): Promise<void> {
     const userId = parseInt(req.user!.sub, 10);
     await userService.revokeExpiredTokens(userId);
