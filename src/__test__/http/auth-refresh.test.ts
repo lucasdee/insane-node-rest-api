@@ -156,6 +156,15 @@ describe('POST /auth/refresh', () => {
 });
 
 describe('POST /auth/logout', () => {
+  it('returns 401 without a refresh token cookie', async () => {
+    const res = await request(app)
+      .post('/auth/logout')
+      .set('Authorization', `Bearer ${accessTokenFor(1)}`);
+
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ message: 'No refresh token in cookie' });
+  });
+
   it.each(invalidRefreshTokens)('returns 401 for %s', async (_label, makeToken) => {
     const res = await logout(makeToken());
 

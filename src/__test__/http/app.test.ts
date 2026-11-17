@@ -1,0 +1,63 @@
+import { describe, it, expect, vi } from 'vitest';
+import request from 'supertest';
+import app from '../../app';
+
+vi.mock('../../config/db', () => ({ prisma: {} }));
+
+const ALLOWED_ORIGIN = 'http://localhost:3000';
+
+describe('security headers', () => {
+  it('sets helmet headers and hides the framework', async () => {
+    const res = await request(app).get('/users/me');
+
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+    expect(res.headers['x-frame-options']).toBe('SAMEORIGIN');
+    expect(res.headers['strict-transport-security']).toBeDefined();
+    expect(res.headers['content-security-policy']).toBeDefined();
+    expect(res.headers['x-powered-by']).toBeUndefined();
+  });
+});
+
+describe('CORS', () => {
+  it('allows the configured origin with credentials', async () => {
+    const res = await request(app).get('/users/me').set('Origin', ALLOWED_ORIGIN);
+
+    expect(res.headers['access-control-allow-origin']).toBe(ALLOWED_ORIGIN);
+    expect(res.headers['access-control-allow-credentials']).toBe('true');
+  });
+
+  it('never echoes back another origin', async () => {
+    const res = await request(app).get('/users/me').set('Origin', 'https://evil.example');
+
+    expect(res.headers['access-control-allow-origin']).not.toBe('https://evil.example');
+  });
+
+  it('answers preflight requests', async () => {
+    const res = await request(app)
+      .options('/notes/create')
+      .set('Origin', ALLOWED_ORIGIN)
+      .set('Access-Control-Request-Method', 'POST')
+      .set('Access-Control-Request-Headers', 'Authorization, Content-Type');
+
+    expect(res.status).toBe(204);
+    expect(res.headers['access-control-allow-origin']).toBe(ALLOWED_ORIGIN);
+    expect(res.headers['access-control-allow-methods']).toContain('POST');
+  });
+});
+
+describe('API docs', () => {
+  it('serves Swagger UI at /docs/', async () => {
+    const res = await request(app).get('/docs/');
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('swagger-ui');
+  });
+});
+
+describe('unknown routes', () => {
+  it('returns 404', async () => {
+    const res = await request(app).get('/does-not-exist');
+
+    expect(res.status).toBe(404);
+  });
+});
