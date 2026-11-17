@@ -1,7 +1,7 @@
 import { ValidateError } from '@tsoa/runtime';
 import { Request, Response, NextFunction } from 'express';
 import { Prisma } from '../generated/prisma/client';
-import { AuthError, ForbiddenError, NotFoundError } from '../errors';
+import { AuthError, ConflictError, ForbiddenError, NotFoundError } from '../errors';
 
 /**
  * Client-safe responses for Prisma errors caused by the request's data.
@@ -48,6 +48,13 @@ export function errorHandler(
   // Missing resources
   if (err instanceof NotFoundError) {
     return res.status(404).json({
+      message: err.message,
+    });
+  }
+
+  // Conflicts with existing resources
+  if (err instanceof ConflictError) {
+    return res.status(409).json({
       message: err.message,
     });
   }

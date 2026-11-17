@@ -411,6 +411,9 @@
 								}
 							}
 						}
+					},
+					"409": {
+						"description": "Username is already taken"
 					}
 				},
 				"tags": [
@@ -509,6 +512,9 @@
 				"responses": {
 					"204": {
 						"description": "No content"
+					},
+					"403": {
+						"description": "Only admins can revoke expired tokens"
 					}
 				},
 				"tags": [

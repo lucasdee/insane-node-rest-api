@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ValidateError } from '@tsoa/runtime';
 import type { NextFunction, Request, Response } from 'express';
 import { errorHandler } from '../../middlewares/errorHandler';
-import { AuthError, ForbiddenError, NotFoundError } from '../../errors';
+import { AuthError, ConflictError, ForbiddenError, NotFoundError } from '../../errors';
 import { Prisma } from '../../generated/prisma/client';
 
 const run = (err: unknown) => {
@@ -44,6 +44,13 @@ describe('errorHandler', () => {
     expect(run(new NotFoundError('User not found'))).toEqual({
       status: 404,
       body: { message: 'User not found' },
+    });
+  });
+
+  it('maps ConflictError to 409', () => {
+    expect(run(new ConflictError('Username is already taken'))).toEqual({
+      status: 409,
+      body: { message: 'Username is already taken' },
     });
   });
 
