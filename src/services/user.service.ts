@@ -9,6 +9,7 @@ import { AuthError, ConflictError, ForbiddenError } from '../errors';
 import { AuthTokens } from './types';
 import { User } from '../dtos/user.dto';
 import { Role } from '../generated/prisma/enums';
+import { assertPasswordFitsBcrypt } from '../utils/password';
 
 const {
   secret,
@@ -71,6 +72,8 @@ const createTokens = async (userId: number): Promise<AuthTokens> => {
 
 export class UserService {
   async register({ username, password, email, displayName }: RegisterRequest): Promise<User> {
+    assertPasswordFitsBcrypt(password);
+
     if (await userRepository.existsByUsername(username)) {
       throw new ConflictError('Username is already taken');
     }
@@ -80,6 +83,8 @@ export class UserService {
   }
 
   async login({ username, password }: LoginRequest): Promise<AuthTokens> {
+    assertPasswordFitsBcrypt(password);
+
     const user = await userRepository.findCredentialsByUsername(username);
     if (!user) throw new AuthError('Invalid credentials');
 
