@@ -56,6 +56,62 @@ describe('env', () => {
     expect((await loadEnv()).nodeEnv).toBe('development');
   });
 
+  describe('rate limits', () => {
+    const OPTIONAL = [
+      'RATE_LIMIT_ENABLED',
+      'RATE_LIMIT_LOGIN_MAX',
+      'RATE_LIMIT_REGISTER_MAX',
+      'RATE_LIMIT_REFRESH_MAX',
+    ];
+
+    it('are enabled with default limits when not configured', async () => {
+      // Empty counts as unset, and is not overwritten by a local .env file.
+      OPTIONAL.forEach((name) => vi.stubEnv(name, ''));
+
+      expect((await loadEnv()).rateLimit).toEqual({
+        enabled: true,
+        loginMax: 10,
+        registerMax: 5,
+        refreshMax: 60,
+      });
+    });
+
+    it('read the configured limits', async () => {
+      vi.stubEnv('RATE_LIMIT_ENABLED', 'false');
+      vi.stubEnv('RATE_LIMIT_LOGIN_MAX', '20');
+      vi.stubEnv('RATE_LIMIT_REGISTER_MAX', '3');
+      vi.stubEnv('RATE_LIMIT_REFRESH_MAX', '100');
+
+      expect((await loadEnv()).rateLimit).toEqual({
+        enabled: false,
+        loginMax: 20,
+        registerMax: 3,
+        refreshMax: 100,
+      });
+    });
+
+    it.each(['0', '-5', '2.5', 'ten'])('reject a limit of "%s"', async (value) => {
+      vi.stubEnv('RATE_LIMIT_LOGIN_MAX', value);
+
+      await expect(loadEnv()).rejects.toThrow(
+        `RATE_LIMIT_LOGIN_MAX must be a positive integer, got "${value}"`,
+      );
+    });
+  });
+
+  it.each([
+    ['', false],
+    ['false', false],
+    ['true', true],
+    ['1', 1],
+    ['2', 2],
+    ['loopback, 10.0.0.0/8', 'loopback, 10.0.0.0/8'],
+  ])('reads TRUST_PROXY="%s" as %s', async (value, expected) => {
+    vi.stubEnv('TRUST_PROXY', value);
+
+    expect((await loadEnv()).trustProxy).toBe(expected);
+  });
+
   it('exposes the configured values', async () => {
     const env = await loadEnv();
 

@@ -20,6 +20,8 @@ export default defineConfig({
       DATABASE_HOST: 'localhost',
       DATABASE_PORT: '3306',
       SHADOW_DATABASE_NAME: 'test_shadow',
+      // All requests in a test come from the same IP. rate-limit.test.ts turns it back on.
+      RATE_LIMIT_ENABLED: 'false',
     },
     coverage: {
       provider: 'v8',

@@ -427,6 +427,9 @@
 					},
 					"409": {
 						"description": "Username is already taken"
+					},
+					"429": {
+						"description": "Too many requests, please try again later"
 					}
 				},
 				"tags": [
@@ -459,6 +462,9 @@
 								}
 							}
 						}
+					},
+					"429": {
+						"description": "Too many requests, please try again later"
 					}
 				},
 				"tags": [
@@ -491,6 +497,9 @@
 								}
 							}
 						}
+					},
+					"429": {
+						"description": "Too many requests, please try again later"
 					}
 				},
 				"tags": [
