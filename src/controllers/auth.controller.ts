@@ -47,14 +47,21 @@ export class AuthController extends Controller {
     };
   }
 
+  /**
+   * Ends the session identified by the refresh token cookie. No access token is
+   * needed, so a client whose access token has expired can still log out.
+   */
   @Post('logout')
-  @Security('jwt')
   @Response(204, 'No Content')
+  @Response(401, 'Missing, invalid or expired refresh token')
   public async logout(@Request() req: ExpressRequest): Promise<void> {
+    // Set on the response directly, not via this.setHeader, so that the cookie is
+    // also cleared when logout fails: a rejected cookie is of no use to the client.
+    req.res?.setHeader('Set-Cookie', clearRefreshCookie());
+
     const refreshToken = req.cookies?.refreshToken as string | undefined;
     if (!refreshToken) throw new AuthError('No refresh token in cookie');
     await userService.logout(refreshToken);
-    this.setHeader('Set-Cookie', clearRefreshCookie());
   }
 
   @Post('revoke-expired-tokens')

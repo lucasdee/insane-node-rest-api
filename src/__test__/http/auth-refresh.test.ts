@@ -84,11 +84,9 @@ const cookie = (token: string) => `refreshToken=${token}`;
 
 const refresh = (token: string) => request(app).post('/auth/refresh').set('Cookie', cookie(token));
 
-const logout = (token: string) =>
-  request(app)
-    .post('/auth/logout')
-    .set('Authorization', `Bearer ${accessTokenFor(1)}`)
-    .set('Cookie', cookie(token));
+const logout = (token: string) => request(app).post('/auth/logout').set('Cookie', cookie(token));
+
+const CLEARED_COOKIE = /^refreshToken=;.*Max-Age=0/;
 
 const invalidRefreshTokens = [
   ['a malformed token', () => 'not-a-jwt'],
@@ -156,23 +154,26 @@ describe('POST /auth/refresh', () => {
 });
 
 describe('POST /auth/logout', () => {
-  it('returns 401 without a refresh token cookie', async () => {
-    const res = await request(app)
-      .post('/auth/logout')
-      .set('Authorization', `Bearer ${accessTokenFor(1)}`);
+  it('returns 401 without a refresh token cookie, and still clears the cookie', async () => {
+    const res = await request(app).post('/auth/logout');
 
     expect(res.status).toBe(401);
     expect(res.body).toEqual({ message: 'No refresh token in cookie' });
+    expect(res.headers['set-cookie']?.[0]).toMatch(CLEARED_COOKIE);
   });
 
-  it.each(invalidRefreshTokens)('returns 401 for %s', async (_label, makeToken) => {
-    const res = await logout(makeToken());
+  it.each(invalidRefreshTokens)(
+    'returns 401 for %s, and still clears the cookie',
+    async (_label, makeToken) => {
+      const res = await logout(makeToken());
 
-    expect(res.status).toBe(401);
-    expect(res.body).toEqual({ message: 'Invalid or expired refresh token' });
-    expect(refreshToken.delete).not.toHaveBeenCalled();
-    expect(refreshToken.deleteMany).not.toHaveBeenCalled();
-  });
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ message: 'Invalid or expired refresh token' });
+      expect(res.headers['set-cookie']?.[0]).toMatch(CLEARED_COOKIE);
+      expect(refreshToken.delete).not.toHaveBeenCalled();
+      expect(refreshToken.deleteMany).not.toHaveBeenCalled();
+    },
+  );
 
   it('revokes a valid refresh token and clears the cookie', async () => {
     const token = issueRefreshToken(1);
@@ -180,8 +181,29 @@ describe('POST /auth/logout', () => {
     const res = await logout(token);
 
     expect(res.status).toBe(204);
-    expect(res.headers['set-cookie']?.[0]).toMatch(/^refreshToken=;.*Max-Age=0/);
+    expect(res.headers['set-cookie']?.[0]).toMatch(CLEARED_COOKIE);
     expect(store.has(hashOf(token))).toBe(false);
+  });
+
+  it.each([
+    [
+      'an expired access token',
+      jwt.sign({ sub: '1' }, process.env.JWT_SECRET!, { expiresIn: -10 }),
+    ],
+    ['an invalid access token', 'not-a-jwt'],
+  ])('ignores %s, since the refresh cookie is the credential', async (_label, accessToken) => {
+    const token = issueRefreshToken(1);
+
+    const res = await logout(token).set('Authorization', `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(204);
+    expect(store.has(hashOf(token))).toBe(false);
+  });
+
+  it('sends the cleared cookie only once', async () => {
+    const res = await logout(issueRefreshToken(1));
+
+    expect(res.headers['set-cookie']).toHaveLength(1);
   });
 
   it('succeeds when logging out twice with the same token', async () => {
@@ -192,7 +214,7 @@ describe('POST /auth/logout', () => {
 
     expect(first.status).toBe(204);
     expect(second.status).toBe(204);
-    expect(second.headers['set-cookie']?.[0]).toMatch(/^refreshToken=;.*Max-Age=0/);
+    expect(second.headers['set-cookie']?.[0]).toMatch(CLEARED_COOKIE);
   });
 
   it('succeeds for a validly signed token that is not stored', async () => {
