@@ -55,9 +55,15 @@ describe('API docs', () => {
 });
 
 describe('unknown routes', () => {
-  it('returns 404', async () => {
-    const res = await request(app).get('/does-not-exist');
+  it.each([
+    ['an unknown GET path', 'get', '/does-not-exist'],
+    ['an unknown POST path', 'post', '/does-not-exist'],
+    ['a known path with an unsupported method', 'get', '/auth/login'],
+  ] as const)('returns a JSON 404 for %s', async (_label, method, path) => {
+    const res = await request(app)[method](path);
 
     expect(res.status).toBe(404);
+    expect(res.headers['content-type']).toMatch(/^application\/json/);
+    expect(res.body).toEqual({ message: 'Route not found' });
   });
 });

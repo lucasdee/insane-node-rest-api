@@ -11,6 +11,7 @@ import { swaggerRouter } from './docs/openapi';
 import { RegisterRoutes } from './routes/routes';
 import { errorHandler } from './middlewares/errorHandler';
 import { env } from './config/env';
+import { NotFoundError } from './errors';
 
 const logsDir = path.join(__dirname, 'logs');
 fs.mkdirSync(logsDir, { recursive: true });
@@ -32,6 +33,11 @@ app.use(morgan('combined', { stream: accessLogStream }));
 RegisterRoutes(app);
 
 app.use('/docs', swaggerRouter);
+
+// Anything no route matched: answer with JSON like the rest of the API, not Express's HTML page.
+app.use(() => {
+  throw new NotFoundError('Route not found');
+});
 
 app.use(errorHandler);
 
