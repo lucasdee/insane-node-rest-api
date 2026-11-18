@@ -1,4 +1,14 @@
-import { Body, Controller, Post, Route, Tags, Security, Response, Request } from '@tsoa/runtime';
+import {
+  Body,
+  Controller,
+  Middlewares,
+  Post,
+  Route,
+  Tags,
+  Security,
+  Response,
+  Request,
+} from '@tsoa/runtime';
 import type { Request as ExpressRequest } from 'express';
 import { buildRefreshCookie, clearRefreshCookie } from '../utils/cookie';
 import { userService } from '../services/user.service';
@@ -6,18 +16,23 @@ import { LoginRequest, RegisterRequest, AuthResponse } from '../dtos/auth.dto';
 import { User } from '../dtos/user.dto';
 import { AuthenticatedRequest } from './types';
 import { AuthError } from '../errors';
+import { loginRateLimit, refreshRateLimit, registerRateLimit } from '../middlewares/rateLimit';
 
 @Route('auth')
 @Tags('Auth')
 export class AuthController extends Controller {
   @Post('register')
+  @Middlewares(registerRateLimit)
   @Response(409, 'Username is already taken')
+  @Response(429, 'Too many requests, please try again later')
   public async register(@Body() body: RegisterRequest): Promise<User> {
     const user = await userService.register(body);
     return user;
   }
 
   @Post('login')
+  @Middlewares(loginRateLimit)
+  @Response(429, 'Too many requests, please try again later')
   public async login(@Body() body: LoginRequest): Promise<AuthResponse> {
     const tokens = await userService.login(body);
     this.setHeader(
@@ -32,6 +47,8 @@ export class AuthController extends Controller {
   }
 
   @Post('refresh')
+  @Middlewares(refreshRateLimit)
+  @Response(429, 'Too many requests, please try again later')
   public async refresh(@Request() req: ExpressRequest): Promise<AuthResponse> {
     const refreshToken = req.cookies?.refreshToken as string | undefined;
     if (!refreshToken) throw new AuthError('No refresh token in cookie');

@@ -23,6 +23,10 @@ const accessLogStream = createStream('access.log', {
 
 const app = express();
 
+// Behind a reverse proxy, lets req.ip be the client's address (from X-Forwarded-For),
+// which the rate limits key on. Off unless TRUST_PROXY is set.
+app.set('trust proxy', env.trustProxy);
+
 app.use(helmet());
 app.use(cors({ origin: env.corsOrigin, credentials: true }));
 app.use(cookieParser());
