@@ -169,6 +169,27 @@ describe('maximum lengths', () => {
     expect(res.status).toBe(401);
   });
 
+  it.each([
+    ['/auth/register', validRegister],
+    ['/auth/login', validLogin],
+  ])('rejects a password within 72 characters but over 72 bytes on %s', async (path, body) => {
+    const res = await post(path, { ...body, password: 'ł'.repeat(37) }, false);
+
+    expect(res.status).toBe(422);
+    expect(res.body.message).toBe('Validation failed');
+    expect(Object.keys(res.body.details)).toEqual(['body.password']);
+  });
+
+  it('registers and logs in with a multi-byte password of exactly 72 bytes', async () => {
+    const password = 'ł'.repeat(36);
+
+    const registered = await post('/auth/register', { ...validRegister, password }, false);
+    const loggedIn = await post('/auth/login', { username: 'alice', password }, false);
+
+    expect(registered.status).toBe(200);
+    expect(loggedIn.status).toBe(200);
+  });
+
   it('accepts a note with title and content at their limits', async () => {
     const author = seedUser();
 

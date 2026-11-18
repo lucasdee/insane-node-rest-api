@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import bcrypt from 'bcryptjs';
+import { ValidateError } from '@tsoa/runtime';
 import jwt, { type JwtPayload } from 'jsonwebtoken';
 import { userService } from '../../services/user.service';
 import { userRepository } from '../../repositories/user.repository';
@@ -66,6 +67,14 @@ describe('UserService.register', () => {
     expect(users.createUser).not.toHaveBeenCalled();
   });
 
+  it('rejects a password longer than 72 bytes before touching the repository', async () => {
+    await expect(userService.register({ ...input, password: 'ł'.repeat(37) })).rejects.toThrow(
+      ValidateError,
+    );
+    expect(users.existsByUsername).not.toHaveBeenCalled();
+    expect(users.createUser).not.toHaveBeenCalled();
+  });
+
   it('stores a bcrypt hash and returns the created user', async () => {
     const created = { uuid: 'u-1', username: 'alice' };
     users.existsByUsername.mockResolvedValue(false);
@@ -94,6 +103,13 @@ describe('UserService.login', () => {
     await expect(userService.login({ username: 'ghost', password: 'x' })).rejects.toThrow(
       new AuthError('Invalid credentials'),
     );
+  });
+
+  it('rejects a password longer than 72 bytes before looking up the user', async () => {
+    await expect(
+      userService.login({ username: 'alice', password: 'ł'.repeat(37) }),
+    ).rejects.toThrow(ValidateError);
+    expect(users.findCredentialsByUsername).not.toHaveBeenCalled();
   });
 
   it('rejects a wrong password with the same message as an unknown user', async () => {
