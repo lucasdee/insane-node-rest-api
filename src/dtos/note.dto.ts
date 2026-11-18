@@ -41,6 +41,7 @@ export class NoteCreateRequest {
   /**
    * @isString Please provide a valid title
    * @minLength 3 Please provide a title that is at least 3 characters long
+   * @maxLength 128 Please provide a title that is at most 128 characters long
    */
   @Example('My first note')
   title!: string;
@@ -48,6 +49,7 @@ export class NoteCreateRequest {
   /**
    * @isString Please provide valid content
    * @minLength 3 Please provide content that is at least 3 characters long
+   * @maxLength 10000 Please provide content that is at most 10000 characters long
    */
   @Example('This is the content of my first note.')
   content!: string;
