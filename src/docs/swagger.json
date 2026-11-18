@@ -65,10 +65,9 @@
 						"type": "string",
 						"example": "This is the content of my first note."
 					},
-					"authorId": {
-						"type": "number",
-						"format": "double",
-						"example": 1
+					"authorUuid": {
+						"type": "string",
+						"example": "5f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b"
 					},
 					"createdAt": {
 						"type": "string",
@@ -80,7 +79,7 @@
 					"uuid",
 					"title",
 					"content",
-					"authorId",
+					"authorUuid",
 					"createdAt"
 				],
 				"type": "object",
@@ -88,20 +87,17 @@
 			},
 			"NoteOnUser": {
 				"properties": {
-					"noteId": {
-						"type": "number",
-						"format": "double",
-						"example": 1
+					"noteUuid": {
+						"type": "string",
+						"example": "123e4567-e89b-12d3-a456-426614174000"
 					},
-					"userId": {
-						"type": "number",
-						"format": "double",
-						"example": 1
+					"userUuid": {
+						"type": "string",
+						"example": "9b2d7c1e-4f3a-4b6c-9d8e-7f6a5b4c3d2e"
 					},
-					"assignedById": {
-						"type": "number",
-						"format": "double",
-						"example": 1
+					"assignedByUuid": {
+						"type": "string",
+						"example": "5f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b"
 					},
 					"assignedAt": {
 						"type": "string",
@@ -122,9 +118,9 @@
 					}
 				},
 				"required": [
-					"noteId",
-					"userId",
-					"assignedById",
+					"noteUuid",
+					"userUuid",
+					"assignedByUuid",
 					"assignedAt",
 					"role"
 				],
@@ -155,20 +151,20 @@
 			},
 			"NoteOnUserCreateRequest": {
 				"properties": {
-					"noteId": {
-						"type": "integer",
-						"format": "int32",
-						"example": 1
+					"noteUuid": {
+						"type": "string",
+						"example": "123e4567-e89b-12d3-a456-426614174000",
+						"pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 					},
-					"userId": {
-						"type": "integer",
-						"format": "int32",
-						"example": 1
+					"userUuid": {
+						"type": "string",
+						"example": "9b2d7c1e-4f3a-4b6c-9d8e-7f6a5b4c3d2e",
+						"pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 					}
 				},
 				"required": [
-					"noteId",
-					"userId"
+					"noteUuid",
+					"userUuid"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -383,6 +379,15 @@
 								}
 							}
 						}
+					},
+					"403": {
+						"description": "Note not found or you do not have access to it"
+					},
+					"404": {
+						"description": "User not found"
+					},
+					"409": {
+						"description": "The user is already assigned to the note"
 					}
 				},
 				"tags": [

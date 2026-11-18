@@ -1,29 +1,68 @@
-import { noteRepository } from '../repositories/note.repository';
+import {
+  noteRepository,
+  type PublicNote,
+  type PublicNoteOnUser,
+  type PublicNoteOnUserWithNote,
+} from '../repositories/note.repository';
+import { userRepository } from '../repositories/user.repository';
 import { Note, NoteOnUser } from '../dtos/note.dto';
 import { Role } from '../generated/prisma/enums';
-import { ForbiddenError } from '../errors';
+import { ForbiddenError, NotFoundError } from '../errors';
+
+const toNote = (note: PublicNote): Note => ({
+  uuid: note.uuid,
+  title: note.title,
+  content: note.content,
+  authorUuid: note.author.uuid,
+  createdAt: note.createdAt,
+});
+
+const toNoteOnUser = (link: PublicNoteOnUser): NoteOnUser => ({
+  noteUuid: link.note.uuid,
+  userUuid: link.user.uuid,
+  assignedByUuid: link.assignedBy.uuid,
+  assignedAt: link.assignedAt,
+  role: link.role,
+});
+
+const toNoteOnUserWithNote = (link: PublicNoteOnUserWithNote): NoteOnUser => ({
+  ...toNoteOnUser(link),
+  note: toNote(link.note),
+});
 
 export class NoteService {
   async listUserNotes(userId: number): Promise<NoteOnUser[]> {
-    return noteRepository.listUserNotes(userId);
+    const links = await noteRepository.listUserNotes(userId);
+    return links.map(toNoteOnUserWithNote);
   }
 
   async createNote(title: string, content: string, createdById: number): Promise<Note> {
-    return noteRepository.createNote(title, content, createdById);
+    return toNote(await noteRepository.createNote(title, content, createdById));
   }
 
-  async assignNoteToUser(noteId: number, userId: number, assignedById: number) {
-    const note = await noteRepository.findNoteWithNoteOnUser(noteId, assignedById);
+  async assignNoteToUser(
+    noteUuid: string,
+    userUuid: string,
+    assignedById: number,
+  ): Promise<NoteOnUser> {
+    const note = await noteRepository.findNoteAccess(noteUuid, assignedById);
     if (!note) {
       throw new ForbiddenError('Note not found or you do not have access to it');
     }
 
-    const noteOnUser = note.users?.[0];
-    if (!noteOnUser || noteOnUser.role === Role.USER) {
-      throw new ForbiddenError('Only users with sufficient permissions can assign notes to other users');
+    const callerRole = note.users[0]?.role;
+    if (!callerRole || callerRole === Role.USER) {
+      throw new ForbiddenError(
+        'Only users with sufficient permissions can assign notes to other users',
+      );
     }
 
-    return noteRepository.assignNoteToUser(noteId, userId, assignedById);
+    const userId = await userRepository.findIdByUuid(userUuid);
+    if (userId === null) {
+      throw new NotFoundError('User not found');
+    }
+
+    return toNoteOnUser(await noteRepository.assignNoteToUser(note.id, userId, assignedById));
   }
 }
 
