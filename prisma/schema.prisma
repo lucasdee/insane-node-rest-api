@@ -40,7 +40,13 @@ model RefreshToken {
   userId    Int      @db.UnsignedInt
   expiresAt DateTime
   createdAt DateTime @default(now())
+  // Set once the token has been rotated. It is kept until it expires, so that reusing
+  // it can be detected and its whole family revoked.
   revoked   Boolean  @default(false)
+  // Shared by every token rotated from the same login, i.e. one device's session.
+  familyId  String   @db.Char(36)
+
+  @@index([familyId])
 }
 
 model Note {

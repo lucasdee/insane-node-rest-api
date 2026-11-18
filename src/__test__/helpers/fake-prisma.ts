@@ -7,7 +7,7 @@ import { Prisma } from '../../generated/prisma/client';
  * - `select` returns only the selected fields, including nested relation selects
  * - without `select`, user.password is omitted (the global `omit` in config/db)
  * - unique violations throw P2002, missing foreign keys throw P2003
- * - deleteMany returns a count and never throws
+ * - updateMany and deleteMany return a count and never throw
  *
  * Use it from a test file with:
  *   vi.mock('../../config/db', async () => ({
@@ -35,6 +35,7 @@ export type RefreshTokenRow = {
   expiresAt: Date;
   createdAt: Date;
   revoked: boolean;
+  familyId: string;
 };
 
 export type NoteRow = {
@@ -189,7 +190,7 @@ export const fakePrisma = {
     create: async ({
       data,
     }: {
-      data: Pick<RefreshTokenRow, 'userId' | 'tokenHash' | 'expiresAt'>;
+      data: Pick<RefreshTokenRow, 'userId' | 'tokenHash' | 'expiresAt' | 'familyId'>;
     }) => {
       if (fakeDb.refreshTokens.some((t) => t.tokenHash === data.tokenHash)) {
         throw knownError('P2002', 'Unique constraint failed on refresh_tokens_tokenHash_key');
@@ -209,6 +210,11 @@ export const fakePrisma = {
     findUnique: async ({ where }: { where: Where }) => {
       const row = fakeDb.refreshTokens.find((t) => matches(t, where));
       return row ? { ...row } : null;
+    },
+    updateMany: async ({ where, data }: { where: Where; data: Partial<RefreshTokenRow> }) => {
+      const rows = fakeDb.refreshTokens.filter((t) => matches(t, where));
+      rows.forEach((row) => Object.assign(row, data));
+      return { count: rows.length };
     },
     deleteMany: async ({ where }: { where: Where }) => deleteWhere(fakeDb.refreshTokens, where),
   },
