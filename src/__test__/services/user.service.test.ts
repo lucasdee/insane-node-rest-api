@@ -21,7 +21,9 @@ vi.mock('../../repositories/token.repository', () => ({
   tokenRepository: {
     saveRefreshToken: vi.fn(),
     findRefreshToken: vi.fn(),
+    markRefreshTokenRotated: vi.fn(),
     revokeRefreshToken: vi.fn(),
+    revokeTokenFamily: vi.fn(),
     revokeExpiredTokens: vi.fn(),
   },
 }));
@@ -33,13 +35,20 @@ const NOW = new Date('2026-01-01T12:00:00.000Z');
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
 
-const storedToken = (token: string, userId: number, expiresAt = new Date(NOW.getTime() + DAY)) => ({
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+const storedToken = (
+  token: string,
+  userId: number,
+  { expiresAt = new Date(NOW.getTime() + DAY), revoked = false } = {},
+) => ({
   id: 1n,
   tokenHash: hashRefreshToken(token),
   userId,
   expiresAt,
   createdAt: NOW,
-  revoked: false,
+  revoked,
+  familyId: 'family-a',
 });
 
 beforeEach(() => {
@@ -140,7 +149,18 @@ describe('UserService.login', () => {
       7,
       hashRefreshToken(result.refreshToken),
       new Date(NOW.getTime() + 7 * DAY),
+      expect.stringMatching(UUID),
     );
+  });
+
+  it('starts a new token family for every login', async () => {
+    users.findCredentialsByUsername.mockResolvedValue(await credentials());
+
+    await userService.login({ username: 'alice', password: 'secret123' });
+    await userService.login({ username: 'alice', password: 'secret123' });
+
+    const [first, second] = tokens.saveRefreshToken.mock.calls.map((call) => call[3]);
+    expect(first).not.toBe(second);
   });
 });
 
@@ -179,7 +199,9 @@ describe('UserService.refreshAccessToken', () => {
 
   it('revokes and rejects a token whose stored expiry has passed', async () => {
     const token = refreshTokenFor(1);
-    tokens.findRefreshToken.mockResolvedValue(storedToken(token, 1, new Date(NOW.getTime() - 1)));
+    tokens.findRefreshToken.mockResolvedValue(
+      storedToken(token, 1, { expiresAt: new Date(NOW.getTime() - 1) }),
+    );
 
     await expect(userService.refreshAccessToken(token)).rejects.toThrow(
       new AuthError('Refresh token expired'),
@@ -188,54 +210,76 @@ describe('UserService.refreshAccessToken', () => {
     expect(tokens.saveRefreshToken).not.toHaveBeenCalled();
   });
 
-  it('rejects a token that a concurrent request already rotated', async () => {
+  it('revokes the whole family and rejects a token that was already rotated', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const token = refreshTokenFor(1);
-    tokens.findRefreshToken.mockResolvedValue(storedToken(token, 1));
-    tokens.revokeRefreshToken.mockResolvedValue(false);
+    tokens.findRefreshToken.mockResolvedValue(storedToken(token, 1, { revoked: true }));
+    tokens.revokeTokenFamily.mockResolvedValue({ count: 3 });
 
     await expect(userService.refreshAccessToken(token)).rejects.toThrow(
       new AuthError('Refresh token has already been used'),
     );
+    expect(tokens.revokeTokenFamily).toHaveBeenCalledWith('family-a');
+    expect(tokens.markRefreshTokenRotated).not.toHaveBeenCalled();
+    expect(tokens.saveRefreshToken).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('reuse detected for user 1'));
+  });
+
+  it('rejects, without revoking the family, a token that a concurrent request already rotated', async () => {
+    const token = refreshTokenFor(1);
+    tokens.findRefreshToken.mockResolvedValue(storedToken(token, 1));
+    tokens.markRefreshTokenRotated.mockResolvedValue(false);
+
+    await expect(userService.refreshAccessToken(token)).rejects.toThrow(
+      new AuthError('Refresh token has already been used'),
+    );
+    expect(tokens.revokeTokenFamily).not.toHaveBeenCalled();
     expect(tokens.saveRefreshToken).not.toHaveBeenCalled();
   });
 
-  it('revokes the old token and issues a new pair', async () => {
+  it('marks the old token as rotated and issues a new pair in the same family', async () => {
     const token = refreshTokenFor(1);
     tokens.findRefreshToken.mockResolvedValue(storedToken(token, 1));
-    tokens.revokeRefreshToken.mockResolvedValue(true);
+    tokens.markRefreshTokenRotated.mockResolvedValue(true);
 
     const result = await userService.refreshAccessToken(token);
 
     expect(tokens.findRefreshToken).toHaveBeenCalledWith(hashRefreshToken(token));
-    expect(tokens.revokeRefreshToken).toHaveBeenCalledWith(hashRefreshToken(token));
+    expect(tokens.markRefreshTokenRotated).toHaveBeenCalledWith(hashRefreshToken(token));
+    expect(tokens.revokeRefreshToken).not.toHaveBeenCalled();
     expect(result.refreshToken).not.toBe(token);
     expect(tokens.saveRefreshToken).toHaveBeenCalledWith(
       1,
       hashRefreshToken(result.refreshToken),
       expect.any(Date),
+      'family-a',
     );
   });
 });
 
 describe('UserService.logout', () => {
-  it('rejects an invalid token without revoking anything', async () => {
+  it('rejects an invalid token without touching storage', async () => {
     await expect(userService.logout('not-a-jwt')).rejects.toThrow(AuthError);
-    expect(tokens.revokeRefreshToken).not.toHaveBeenCalled();
+    expect(tokens.findRefreshToken).not.toHaveBeenCalled();
+    expect(tokens.revokeTokenFamily).not.toHaveBeenCalled();
   });
 
-  it('revokes the token by its hash', async () => {
+  it('revokes the whole family of the token', async () => {
     const token = refreshTokenFor(1);
-    tokens.revokeRefreshToken.mockResolvedValue(true);
+    tokens.findRefreshToken.mockResolvedValue(storedToken(token, 1));
+    tokens.revokeTokenFamily.mockResolvedValue({ count: 2 });
 
     await userService.logout(token);
 
-    expect(tokens.revokeRefreshToken).toHaveBeenCalledWith(hashRefreshToken(token));
+    expect(tokens.findRefreshToken).toHaveBeenCalledWith(hashRefreshToken(token));
+    expect(tokens.revokeTokenFamily).toHaveBeenCalledWith('family-a');
   });
 
   it('succeeds when the token was already revoked', async () => {
-    tokens.revokeRefreshToken.mockResolvedValue(false);
+    tokens.findRefreshToken.mockResolvedValue(null);
 
     await expect(userService.logout(refreshTokenFor(1))).resolves.toBeUndefined();
+    expect(tokens.revokeTokenFamily).not.toHaveBeenCalled();
   });
 });
 

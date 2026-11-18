@@ -42,7 +42,11 @@ const verifyRefreshToken = (refreshToken: string): string => {
   return String(payload.sub);
 };
 
-const createTokens = async (userId: number): Promise<AuthTokens> => {
+/**
+ * Issues an access token and a refresh token. `familyId` ties the refresh token to
+ * the login it was rotated from, so that its whole chain can be revoked on reuse.
+ */
+const createTokens = async (userId: number, familyId: string): Promise<AuthTokens> => {
   // A random `jti` makes every token unique. Without it, tokens issued for the same
   // user within the same second are identical, and the refresh token hash collides
   // with the unique constraint on refresh_tokens.tokenHash.
@@ -60,7 +64,7 @@ const createTokens = async (userId: number): Promise<AuthTokens> => {
   );
   const refreshTokenHash = createRefreshTokenHash(refreshToken);
 
-  await tokenRepository.saveRefreshToken(userId, refreshTokenHash, refreshTokenExpiresOn);
+  await tokenRepository.saveRefreshToken(userId, refreshTokenHash, refreshTokenExpiresOn, familyId);
 
   return {
     accessToken,
@@ -91,7 +95,8 @@ export class UserService {
     const match = await bcrypt.compare(password, user.password);
     if (!match) throw new AuthError('Invalid credentials');
 
-    const authResponse = await createTokens(user.id);
+    // Every login starts a new family: one per device or session.
+    const authResponse = await createTokens(user.id, crypto.randomUUID());
 
     return authResponse;
   }
@@ -112,16 +117,29 @@ export class UserService {
       throw new AuthError('Refresh token does not belong to the user');
     }
 
+    // A token that was already rotated is being used again. Either the client or an
+    // attacker holds a stolen copy, and there is no telling which, so end the whole
+    // session: the attacker's tokens are revoked, and the user has to log in again.
+    if (storedToken.revoked) {
+      const { count } = await tokenRepository.revokeTokenFamily(storedToken.familyId);
+      console.warn(
+        `Refresh token reuse detected for user ${userId}: revoked ${count} token(s) of its family`,
+      );
+      throw new AuthError('Refresh token has already been used');
+    }
+
     if (storedToken.expiresAt < new Date()) {
       await tokenRepository.revokeRefreshToken(currentRefreshTokenHash);
       throw new AuthError('Refresh token expired');
     }
 
-    // Only the request that actually removes the token may rotate it.
-    const revoked = await tokenRepository.revokeRefreshToken(currentRefreshTokenHash);
-    if (!revoked) throw new AuthError('Refresh token has already been used');
+    // Only the request that actually marks the token as rotated may issue new tokens.
+    // A request that loses this race is not treated as reuse: it is most likely the
+    // same client refreshing twice at once, e.g. from two tabs.
+    const rotated = await tokenRepository.markRefreshTokenRotated(currentRefreshTokenHash);
+    if (!rotated) throw new AuthError('Refresh token has already been used');
 
-    const authResponse = await createTokens(userId);
+    const authResponse = await createTokens(userId, storedToken.familyId);
 
     return authResponse;
   }
@@ -131,8 +149,12 @@ export class UserService {
 
     const refreshTokenHash = createRefreshTokenHash(refreshToken);
 
-    // Idempotent: logging out with an already revoked token still succeeds.
-    await tokenRepository.revokeRefreshToken(refreshTokenHash);
+    // Ends the whole session, including the rows kept for rotated tokens.
+    // Idempotent: logging out with a token that is already gone still succeeds.
+    const storedToken = await tokenRepository.findRefreshToken(refreshTokenHash);
+    if (storedToken) {
+      await tokenRepository.revokeTokenFamily(storedToken.familyId);
+    }
   }
 
   async revokeExpiredTokens(userId: number): Promise<void> {

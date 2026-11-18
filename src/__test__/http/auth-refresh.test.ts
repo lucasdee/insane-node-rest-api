@@ -4,12 +4,18 @@ import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import app from '../../app';
 
-type RefreshTokenRow = { tokenHash: string; userId: number; expiresAt: Date };
+type RefreshTokenRow = {
+  tokenHash: string;
+  userId: number;
+  expiresAt: Date;
+  familyId: string;
+  revoked: boolean;
+};
 
 /**
  * In-memory stand-in for prisma.refreshToken with Prisma's semantics:
  * `create` throws (P2002) on a duplicate tokenHash, `delete` throws (P2025)
- * when the row is missing, `deleteMany` returns a count.
+ * when the row is missing, `updateMany` and `deleteMany` return a count.
  */
 const { store, refreshToken } = vi.hoisted(() => {
   const store = new Map<string, RefreshTokenRow>();
@@ -22,13 +28,32 @@ const { store, refreshToken } = vi.hoisted(() => {
       const row = store.get(where.tokenHash);
       return row ? { ...row } : null;
     }),
-    create: vi.fn(async ({ data }: { data: RefreshTokenRow }) => {
+    create: vi.fn(async ({ data }: { data: Omit<RefreshTokenRow, 'revoked'> }) => {
       if (store.has(data.tokenHash)) {
         throw Object.assign(new Error('Unique constraint failed on tokenHash'), { code: 'P2002' });
       }
-      store.set(data.tokenHash, { ...data });
-      return { ...data };
+      const row = { revoked: false, ...data };
+      store.set(data.tokenHash, row);
+      return { ...row };
     }),
+    updateMany: vi.fn(
+      async ({
+        where,
+        data,
+      }: {
+        where: Partial<RefreshTokenRow>;
+        data: Partial<RefreshTokenRow>;
+      }) => {
+        let count = 0;
+        for (const row of store.values()) {
+          if (matches(row, where)) {
+            Object.assign(row, data);
+            count++;
+          }
+        }
+        return { count };
+      },
+    ),
     delete: vi.fn(async ({ where }: { where: { tokenHash: string } }) => {
       const row = store.get(where.tokenHash);
       if (!row) {
@@ -57,8 +82,9 @@ vi.mock('../../config/db', () => ({ prisma: { refreshToken } }));
 
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET!;
 
+// A unique jti, as the API sets, so that two tokens signed in the same second differ.
 const refreshTokenFor = (userId: number, secret = REFRESH_SECRET) =>
-  jwt.sign({ sub: userId }, secret, { expiresIn: '7d' });
+  jwt.sign({ sub: userId }, secret, { expiresIn: '7d', jwtid: crypto.randomUUID() });
 
 const expiredRefreshTokenFor = (userId: number) =>
   jwt.sign({ sub: userId, exp: Math.floor(Date.now() / 1000) - 60 }, REFRESH_SECRET);
@@ -69,16 +95,22 @@ const accessTokenFor = (userId: number) =>
 const hashOf = (token: string) =>
   crypto.createHmac('sha512', process.env.JWT_REFRESH_HASH_SECRET!).update(token).digest('hex');
 
-/** Signs a refresh token and stores it as an active session. */
-const issueRefreshToken = (userId: number) => {
+/** Signs a refresh token and stores it as an active session (its own family by default). */
+const issueRefreshToken = (userId: number, familyId: string = crypto.randomUUID()) => {
   const token = refreshTokenFor(userId);
   store.set(hashOf(token), {
     tokenHash: hashOf(token),
     userId,
     expiresAt: new Date(Date.now() + 60_000),
+    familyId,
+    revoked: false,
   });
   return token;
 };
+
+/** The refresh token a successful response sets in its cookie. */
+const refreshTokenOf = (res: request.Response) =>
+  /^refreshToken=([^;]+)/.exec(res.headers['set-cookie']?.[0] ?? '')![1];
 
 const cookie = (token: string) => `refreshToken=${token}`;
 
@@ -115,34 +147,69 @@ describe('POST /auth/refresh', () => {
     expect(res.status).toBe(401);
   });
 
-  it('rotates a valid refresh token', async () => {
-    const token = issueRefreshToken(1);
+  it('rotates a valid refresh token within its family, keeping the old one as revoked', async () => {
+    const token = issueRefreshToken(1, 'family-a');
 
     const res = await refresh(token);
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('accessToken');
     expect(res.headers['set-cookie']?.[0]).toMatch(/^refreshToken=.+; HttpOnly/);
-    expect(store.has(hashOf(token))).toBe(false);
-    expect(store.size).toBe(1);
+    expect(store.get(hashOf(token))).toMatchObject({ revoked: true, familyId: 'family-a' });
+    expect(store.get(hashOf(refreshTokenOf(res)))).toMatchObject({
+      revoked: false,
+      familyId: 'family-a',
+      userId: 1,
+    });
   });
 
-  it('rejects a refresh token that was already rotated', async () => {
-    const token = issueRefreshToken(1);
-    await refresh(token);
+  describe('when a rotated token is reused', () => {
+    it('returns 401 and revokes every token of its family', async () => {
+      const stolen = issueRefreshToken(1, 'family-a');
+      const current = refreshTokenOf(await refresh(stolen));
 
-    const res = await refresh(token);
+      const reuse = await refresh(stolen);
 
-    expect(res.status).toBe(401);
+      expect(reuse.status).toBe(401);
+      expect(reuse.body).toEqual({ message: 'Refresh token has already been used' });
+      expect([...store.values()].filter((t) => t.familyId === 'family-a')).toEqual([]);
+
+      // Whoever holds the latest token of the family is logged out as well.
+      const next = await refresh(current);
+      expect(next.status).toBe(401);
+    });
+
+    it('leaves the user’s other sessions alone', async () => {
+      const laptop = issueRefreshToken(1, 'laptop');
+      const phone = issueRefreshToken(1, 'phone');
+      await refresh(laptop);
+
+      await refresh(laptop);
+
+      expect((await refresh(phone)).status).toBe(200);
+    });
+
+    it('does not issue new tokens', async () => {
+      const stolen = issueRefreshToken(1);
+      await refresh(stolen);
+      refreshToken.create.mockClear();
+
+      await refresh(stolen);
+
+      expect(refreshToken.create).not.toHaveBeenCalled();
+    });
   });
 
-  it('returns 401 when a concurrent request revokes the token first', async () => {
+  it('returns 401 without revoking the family when a concurrent request rotates the token first', async () => {
     const token = refreshTokenFor(1);
-    // The lookup still sees the token, but another request deletes it before this one does.
+    // The lookup still sees the token as active, but another request marks it as
+    // rotated before this one does.
     refreshToken.findUnique.mockResolvedValueOnce({
       tokenHash: hashOf(token),
       userId: 1,
       expiresAt: new Date(Date.now() + 60_000),
+      familyId: 'family-a',
+      revoked: false,
     });
 
     const res = await refresh(token);
@@ -150,6 +217,7 @@ describe('POST /auth/refresh', () => {
     expect(res.status).toBe(401);
     expect(res.body).toEqual({ message: 'Refresh token has already been used' });
     expect(refreshToken.create).not.toHaveBeenCalled();
+    expect(refreshToken.deleteMany).not.toHaveBeenCalled();
   });
 });
 
@@ -221,5 +289,28 @@ describe('POST /auth/logout', () => {
     const res = await logout(refreshTokenFor(1));
 
     expect(res.status).toBe(204);
+  });
+
+  it('ends the whole session, including the tokens it rotated out', async () => {
+    const first = issueRefreshToken(1, 'family-a');
+    const current = refreshTokenOf(await refresh(first));
+
+    await logout(current);
+
+    expect(store.size).toBe(0);
+    // With the family gone, the old token is unknown rather than a detected reuse.
+    const res = await refresh(first);
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/Could not find refresh token/);
+  });
+
+  it('leaves the user’s other sessions alone', async () => {
+    const laptop = issueRefreshToken(1, 'laptop');
+    const phone = issueRefreshToken(1, 'phone');
+
+    await logout(laptop);
+
+    expect(store.has(hashOf(phone))).toBe(true);
+    expect((await refresh(phone)).status).toBe(200);
   });
 });

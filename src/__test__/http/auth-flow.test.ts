@@ -54,28 +54,57 @@ describe('auth flow', () => {
     expect(refreshed.status).toBe(200);
     const secondCookie = refreshCookieOf(refreshed);
     expect(secondCookie).not.toBe(firstCookie);
-    expect(fakeDb.refreshTokens).toHaveLength(1);
+    // The rotated-out token is kept, marked as revoked, in the same family
+    expect(fakeDb.refreshTokens).toEqual([
+      expect.objectContaining({ revoked: true }),
+      expect.objectContaining({ revoked: false, familyId: fakeDb.refreshTokens[0].familyId }),
+    ]);
 
     const profileAgain = await request(app)
       .get('/users/me')
       .set('Authorization', `Bearer ${refreshed.body.accessToken}`);
     expect(profileAgain.status).toBe(200);
 
-    // The rotated-out refresh token can no longer be used
-    const reused = await request(app).post('/auth/refresh').set('Cookie', firstCookie);
-    expect(reused.status).toBe(401);
-
-    // Log out: the current refresh token is revoked and the cookie cleared
-    const loggedOut = await request(app)
-      .post('/auth/logout')
-      .set('Authorization', `Bearer ${refreshed.body.accessToken}`)
-      .set('Cookie', secondCookie);
+    // Log out: the whole session is revoked and the cookie cleared
+    const loggedOut = await request(app).post('/auth/logout').set('Cookie', secondCookie);
     expect(loggedOut.status).toBe(204);
     expect(refreshCookieOf(loggedOut)).toBe('refreshToken=');
     expect(fakeDb.refreshTokens).toHaveLength(0);
 
-    const afterLogout = await request(app).post('/auth/refresh').set('Cookie', secondCookie);
-    expect(afterLogout.status).toBe(401);
+    for (const cookie of [firstCookie, secondCookie]) {
+      const afterLogout = await request(app).post('/auth/refresh').set('Cookie', cookie);
+      expect(afterLogout.status).toBe(401);
+    }
+  });
+
+  it('ends only the affected session when a rotated refresh token is reused', async () => {
+    await request(app)
+      .post('/auth/register')
+      .send({ username: 'alice', password: 'secret123', email: 'alice@example.com' });
+    const login = () =>
+      request(app).post('/auth/login').send({ username: 'alice', password: 'secret123' });
+    const laptop = await login();
+    const phone = await login();
+
+    // The laptop refreshes as usual; an attacker kept a copy of its first token.
+    const stolenCookie = refreshCookieOf(laptop);
+    const rotated = await request(app).post('/auth/refresh').set('Cookie', stolenCookie);
+    expect(rotated.status).toBe(200);
+
+    const reuse = await request(app).post('/auth/refresh').set('Cookie', stolenCookie);
+    expect(reuse.status).toBe(401);
+
+    // The laptop's session is over: its latest token no longer works...
+    const laptopAgain = await request(app)
+      .post('/auth/refresh')
+      .set('Cookie', refreshCookieOf(rotated));
+    expect(laptopAgain.status).toBe(401);
+
+    // ...while the phone's session is unaffected.
+    const phoneRefresh = await request(app)
+      .post('/auth/refresh')
+      .set('Cookie', refreshCookieOf(phone));
+    expect(phoneRefresh.status).toBe(200);
   });
 
   it('keeps sessions on different devices independent', async () => {
@@ -88,11 +117,9 @@ describe('auth flow', () => {
     const laptop = await login();
     const phone = await login();
     expect(fakeDb.refreshTokens).toHaveLength(2);
+    expect(fakeDb.refreshTokens[0].familyId).not.toBe(fakeDb.refreshTokens[1].familyId);
 
-    await request(app)
-      .post('/auth/logout')
-      .set('Authorization', `Bearer ${laptop.body.accessToken}`)
-      .set('Cookie', refreshCookieOf(laptop));
+    await request(app).post('/auth/logout').set('Cookie', refreshCookieOf(laptop));
 
     const phoneRefresh = await request(app)
       .post('/auth/refresh')
