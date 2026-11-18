@@ -4,7 +4,7 @@ import { Prisma } from '../../generated/prisma/client';
 /**
  * In-memory stand-in for the Prisma client, covering only the queries the
  * repositories make. It mirrors the Prisma behaviour the app relies on:
- * - `select` returns only the selected fields
+ * - `select` returns only the selected fields, including nested relation selects
  * - without `select`, user.password is omitted (the global `omit` in config/db)
  * - unique violations throw P2002, missing foreign keys throw P2003
  * - deleteMany returns a count and never throws
@@ -56,6 +56,10 @@ export type NoteOnUserRow = {
 
 type Where = Record<string, unknown>;
 type Select = Record<string, boolean | undefined>;
+/** A select that may also pick fields of related rows: `{ author: { select: { uuid: true } } }`. */
+type RelationSelect = {
+  [key: string]: boolean | { select: RelationSelect; where?: Where } | undefined;
+};
 
 export const fakeDb = {
   users: [] as UserRow[],
@@ -99,6 +103,61 @@ const deleteWhere = <T extends object>(rows: T[], where: Where) => {
 };
 
 const userExists = (id: number) => fakeDb.users.some((u) => u.id === id);
+
+type Model = 'user' | 'note' | 'noteOnUser';
+
+/** How each relation field resolves: the related model and its row(s). */
+const relations: Record<
+  Model,
+  Record<string, { model: Model; resolve: (row: never) => object | object[] | undefined }>
+> = {
+  user: {},
+  note: {
+    author: {
+      model: 'user',
+      resolve: (n: NoteRow) => fakeDb.users.find((u) => u.id === n.authorId),
+    },
+    users: {
+      model: 'noteOnUser',
+      resolve: (n: NoteRow) => fakeDb.notesOnUsers.filter((l) => l.noteId === n.id),
+    },
+  },
+  noteOnUser: {
+    note: {
+      model: 'note',
+      resolve: (l: NoteOnUserRow) => fakeDb.notes.find((n) => n.id === l.noteId),
+    },
+    user: {
+      model: 'user',
+      resolve: (l: NoteOnUserRow) => fakeDb.users.find((u) => u.id === l.userId),
+    },
+    assignedBy: {
+      model: 'user',
+      resolve: (l: NoteOnUserRow) => fakeDb.users.find((u) => u.id === l.assignedById),
+    },
+  },
+};
+
+/** Applies a select, following relations like Prisma does. Without one, returns a copy. */
+const selectRow = (model: Model, row: object, select?: RelationSelect): Record<string, unknown> => {
+  if (!select) return { ...row };
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(select)) {
+    if (value === true) {
+      result[key] = (row as Record<string, unknown>)[key];
+    } else if (value && typeof value === 'object') {
+      const relation = relations[model][key];
+      if (!relation) throw new Error(`fake-prisma: unknown relation ${model}.${key}`);
+      const related = relation.resolve(row as never);
+      result[key] = Array.isArray(related)
+        ? related
+            .filter((r) => matches(r, value.where))
+            .map((r) => selectRow(relation.model, r, value.select))
+        : related && selectRow(relation.model, related, value.select);
+    }
+  }
+  return result;
+};
 
 export const fakePrisma = {
   user: {
@@ -157,10 +216,12 @@ export const fakePrisma = {
   note: {
     create: async ({
       data,
+      select,
     }: {
       data: Pick<NoteRow, 'title' | 'content' | 'authorId'> & {
         users: { create: Pick<NoteOnUserRow, 'userId' | 'assignedById' | 'role'> };
       };
+      select?: RelationSelect;
     }) => {
       if (!userExists(data.authorId)) {
         throw knownError('P2003', 'Foreign key constraint violated on notes_authorId_fkey');
@@ -169,37 +230,25 @@ export const fakePrisma = {
       const note: NoteRow = { id: nextId++, uuid: randomUUID(), createdAt: new Date(), ...fields };
       fakeDb.notes.push(note);
       fakeDb.notesOnUsers.push({ noteId: note.id, assignedAt: new Date(), ...users.create });
-      return { ...note };
+      return selectRow('note', note, select);
     },
-    findUnique: async ({
-      where,
-      include,
-    }: {
-      where: Where;
-      include?: { users?: { where?: Where } };
-    }) => {
+    findUnique: async ({ where, select }: { where: Where; select?: RelationSelect }) => {
       const note = fakeDb.notes.find((n) => matches(n, where));
-      if (!note) return null;
-      if (!include?.users) return { ...note };
-      const users = fakeDb.notesOnUsers
-        .filter((link) => link.noteId === note.id && matches(link, include.users?.where))
-        .map((link) => ({ ...link }));
-      return { ...note, users };
+      return note ? selectRow('note', note, select) : null;
     },
   },
 
   noteOnUser: {
-    findMany: async ({ where, include }: { where: Where; include?: { note?: boolean } }) =>
+    findMany: async ({ where, select }: { where: Where; select?: RelationSelect }) =>
       fakeDb.notesOnUsers
         .filter((link) => matches(link, where))
-        .map((link) => {
-          const note = fakeDb.notes.find((n) => n.id === link.noteId);
-          return include?.note ? { ...link, note: { ...note } } : { ...link };
-        }),
+        .map((link) => selectRow('noteOnUser', link, select)),
     create: async ({
       data,
+      select,
     }: {
       data: Pick<NoteOnUserRow, 'noteId' | 'userId' | 'assignedById'> & { role?: Role };
+      select?: RelationSelect;
     }) => {
       if (fakeDb.notesOnUsers.some((l) => l.noteId === data.noteId && l.userId === data.userId)) {
         throw knownError('P2002', 'Unique constraint failed on notes_on_users PRIMARY');
@@ -213,7 +262,7 @@ export const fakePrisma = {
       }
       const row: NoteOnUserRow = { role: 'USER', assignedAt: new Date(), ...data };
       fakeDb.notesOnUsers.push(row);
-      return { ...row };
+      return selectRow('noteOnUser', row, select);
     },
   },
 };

@@ -41,6 +41,15 @@ export class UserRepository {
     return user !== null;
   }
 
+  /** Resolves a public uuid to the internal id used for relations. */
+  async findIdByUuid(uuid: string): Promise<number | null> {
+    const user = await prisma.user.findUnique({
+      where: { uuid },
+      select: { id: true },
+    });
+    return user?.id ?? null;
+  }
+
   /**
    * For credential checks only (login). The result contains the password hash
    * and must never be returned to a client.

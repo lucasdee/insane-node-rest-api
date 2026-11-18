@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
+import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
 import app from '../../app';
 import { Prisma } from '../../generated/prisma/client';
@@ -59,10 +60,11 @@ describe('Prisma errors are not leaked to clients', () => {
       request(app)
         .post('/notes/assign')
         .set('Authorization', `Bearer ${accessTokenFor(1)}`)
-        .send({ noteId: 1, userId: 2 });
+        .send({ noteUuid: randomUUID(), userUuid: randomUUID() });
 
     beforeEach(() => {
-      prisma.note.findUnique.mockResolvedValue({ id: 1, users: [{ userId: 1, role: 'ADMIN' }] });
+      prisma.note.findUnique.mockResolvedValue({ id: 1, users: [{ role: 'ADMIN' }] });
+      prisma.user.findUnique.mockResolvedValue({ id: 2 });
     });
 
     it('returns 409 when the note is already assigned to the user', async () => {
@@ -74,7 +76,7 @@ describe('Prisma errors are not leaked to clients', () => {
       expectNoInternals(res.body);
     });
 
-    it('returns 400 when the target user does not exist', async () => {
+    it('returns 400 when the target user is deleted before the assignment is stored', async () => {
       prisma.noteOnUser.create.mockRejectedValue(
         prismaError('P2003', 'notes_on_users_userId_fkey'),
       );

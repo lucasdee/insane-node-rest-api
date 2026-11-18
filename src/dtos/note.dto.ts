@@ -10,22 +10,22 @@ export class Note {
   @Example('This is the content of my first note.')
   content!: string;
 
-  @Example(1)
-  authorId!: number;
+  @Example('5f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b')
+  authorUuid!: string;
 
   @Example('2024-01-01T00:00:00.000Z')
   createdAt!: Date;
 }
 
 export class NoteOnUser {
-  @Example(1)
-  noteId!: number;
+  @Example('123e4567-e89b-12d3-a456-426614174000')
+  noteUuid!: string;
 
-  @Example(1)
-  userId!: number;
+  @Example('9b2d7c1e-4f3a-4b6c-9d8e-7f6a5b4c3d2e')
+  userUuid!: string;
 
-  @Example(1)
-  assignedById!: number;
+  @Example('5f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b')
+  assignedByUuid!: string;
 
   @Example('2024-01-01T00:00:00.000Z')
   assignedAt!: Date;
@@ -57,14 +57,16 @@ export class NoteCreateRequest {
 
 export class NoteOnUserCreateRequest {
   /**
-   * @isInt Please provide a valid note ID
+   * @isString Please provide a valid note UUID
+   * @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ Please provide a valid note UUID
    */
-  @Example(1)
-  noteId!: number;
+  @Example('123e4567-e89b-12d3-a456-426614174000')
+  noteUuid!: string;
 
   /**
-   * @isInt Please provide a valid user ID
+   * @isString Please provide a valid user UUID
+   * @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ Please provide a valid user UUID
    */
-  @Example(1)
-  userId!: number;
+  @Example('9b2d7c1e-4f3a-4b6c-9d8e-7f6a5b4c3d2e')
+  userUuid!: string;
 }

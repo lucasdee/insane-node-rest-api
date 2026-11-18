@@ -1,27 +1,65 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { noteService } from '../../services/note.service';
 import { noteRepository } from '../../repositories/note.repository';
-import { ForbiddenError } from '../../errors';
+import { userRepository } from '../../repositories/user.repository';
+import { ForbiddenError, NotFoundError } from '../../errors';
 
 vi.mock('../../repositories/note.repository', () => ({
   noteRepository: {
     listUserNotes: vi.fn(),
     createNote: vi.fn(),
-    findNoteWithNoteOnUser: vi.fn(),
+    findNoteAccess: vi.fn(),
     assignNoteToUser: vi.fn(),
   },
 }));
 
-const notes = vi.mocked(noteRepository);
+vi.mock('../../repositories/user.repository', () => ({
+  userRepository: { findIdByUuid: vi.fn() },
+}));
 
-const noteWithCallerRole = (role: 'USER' | 'MOD' | 'ADMIN' | null) => ({
-  id: 10,
-  uuid: 'n-10',
+const notes = vi.mocked(noteRepository);
+const users = vi.mocked(userRepository);
+
+const createdAt = new Date('2026-01-01T00:00:00.000Z');
+const assignedAt = new Date('2026-01-02T00:00:00.000Z');
+
+/** A note as the repository returns it (Prisma's nested select shape). */
+const publicNote = {
+  uuid: 'note-uuid',
   title: 'Title',
   content: 'Content',
-  authorId: 1,
-  createdAt: new Date(),
-  users: role ? [{ noteId: 10, userId: 1, assignedById: 1, assignedAt: new Date(), role }] : [],
+  createdAt,
+  author: { uuid: 'alice-uuid' },
+};
+
+/** The note as the API returns it. */
+const noteDto = {
+  uuid: 'note-uuid',
+  title: 'Title',
+  content: 'Content',
+  authorUuid: 'alice-uuid',
+  createdAt,
+};
+
+const publicLink = {
+  role: 'USER' as const,
+  assignedAt,
+  note: { uuid: 'note-uuid' },
+  user: { uuid: 'bob-uuid' },
+  assignedBy: { uuid: 'alice-uuid' },
+};
+
+const linkDto = {
+  noteUuid: 'note-uuid',
+  userUuid: 'bob-uuid',
+  assignedByUuid: 'alice-uuid',
+  assignedAt,
+  role: 'USER',
+};
+
+const accessWithCallerRole = (role: 'USER' | 'MOD' | 'ADMIN' | null) => ({
+  id: 10,
+  users: role ? [{ role }] : [],
 });
 
 beforeEach(() => {
@@ -29,65 +67,79 @@ beforeEach(() => {
 });
 
 describe('NoteService.listUserNotes', () => {
-  it('returns the notes assigned to the user', async () => {
-    const list = [{ noteId: 10 }];
-    notes.listUserNotes.mockResolvedValue(list as never);
+  it('returns the user’s notes with related records flattened to uuids', async () => {
+    notes.listUserNotes.mockResolvedValue([{ ...publicLink, note: publicNote }]);
 
-    expect(await noteService.listUserNotes(1)).toBe(list);
+    expect(await noteService.listUserNotes(1)).toEqual([{ ...linkDto, note: noteDto }]);
     expect(notes.listUserNotes).toHaveBeenCalledWith(1);
   });
 });
 
 describe('NoteService.createNote', () => {
-  it('creates the note for its author', async () => {
-    const note = { id: 10 };
-    notes.createNote.mockResolvedValue(note as never);
+  it('creates the note for its author and returns it with the author’s uuid', async () => {
+    notes.createNote.mockResolvedValue(publicNote);
 
-    expect(await noteService.createNote('Title', 'Content', 1)).toBe(note);
+    expect(await noteService.createNote('Title', 'Content', 1)).toEqual(noteDto);
     expect(notes.createNote).toHaveBeenCalledWith('Title', 'Content', 1);
   });
 });
 
 describe('NoteService.assignNoteToUser', () => {
-  it('looks up the note together with the caller’s own assignment', async () => {
-    notes.findNoteWithNoteOnUser.mockResolvedValue(noteWithCallerRole('ADMIN'));
+  it('looks up the note by uuid together with the caller’s own role', async () => {
+    notes.findNoteAccess.mockResolvedValue(accessWithCallerRole('ADMIN'));
+    users.findIdByUuid.mockResolvedValue(2);
+    notes.assignNoteToUser.mockResolvedValue(publicLink);
 
-    await noteService.assignNoteToUser(10, 2, 1);
+    await noteService.assignNoteToUser('note-uuid', 'bob-uuid', 1);
 
-    expect(notes.findNoteWithNoteOnUser).toHaveBeenCalledWith(10, 1);
+    expect(notes.findNoteAccess).toHaveBeenCalledWith('note-uuid', 1);
   });
 
   it('forbids assigning a note that does not exist', async () => {
-    notes.findNoteWithNoteOnUser.mockResolvedValue(null);
+    notes.findNoteAccess.mockResolvedValue(null);
 
-    await expect(noteService.assignNoteToUser(10, 2, 1)).rejects.toThrow(
+    await expect(noteService.assignNoteToUser('note-uuid', 'bob-uuid', 1)).rejects.toThrow(
       new ForbiddenError('Note not found or you do not have access to it'),
     );
     expect(notes.assignNoteToUser).not.toHaveBeenCalled();
   });
 
   it('forbids a caller who is not assigned to the note', async () => {
-    notes.findNoteWithNoteOnUser.mockResolvedValue(noteWithCallerRole(null));
+    notes.findNoteAccess.mockResolvedValue(accessWithCallerRole(null));
 
-    await expect(noteService.assignNoteToUser(10, 2, 1)).rejects.toThrow(ForbiddenError);
+    await expect(noteService.assignNoteToUser('note-uuid', 'bob-uuid', 1)).rejects.toThrow(
+      ForbiddenError,
+    );
     expect(notes.assignNoteToUser).not.toHaveBeenCalled();
   });
 
-  it('forbids a caller with the USER role on the note', async () => {
-    notes.findNoteWithNoteOnUser.mockResolvedValue(noteWithCallerRole('USER'));
+  it('forbids a caller with the USER role on the note before looking up the target', async () => {
+    notes.findNoteAccess.mockResolvedValue(accessWithCallerRole('USER'));
 
-    await expect(noteService.assignNoteToUser(10, 2, 1)).rejects.toThrow(
+    await expect(noteService.assignNoteToUser('note-uuid', 'bob-uuid', 1)).rejects.toThrow(
       new ForbiddenError('Only users with sufficient permissions can assign notes to other users'),
+    );
+    expect(users.findIdByUuid).not.toHaveBeenCalled();
+    expect(notes.assignNoteToUser).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when the target user does not exist', async () => {
+    notes.findNoteAccess.mockResolvedValue(accessWithCallerRole('ADMIN'));
+    users.findIdByUuid.mockResolvedValue(null);
+
+    await expect(noteService.assignNoteToUser('note-uuid', 'missing', 1)).rejects.toThrow(
+      new NotFoundError('User not found'),
     );
     expect(notes.assignNoteToUser).not.toHaveBeenCalled();
   });
 
   it.each(['MOD', 'ADMIN'] as const)('allows a caller with the %s role', async (role) => {
-    const assignment = { noteId: 10, userId: 2 };
-    notes.findNoteWithNoteOnUser.mockResolvedValue(noteWithCallerRole(role));
-    notes.assignNoteToUser.mockResolvedValue(assignment as never);
+    notes.findNoteAccess.mockResolvedValue(accessWithCallerRole(role));
+    users.findIdByUuid.mockResolvedValue(2);
+    notes.assignNoteToUser.mockResolvedValue(publicLink);
 
-    expect(await noteService.assignNoteToUser(10, 2, 1)).toBe(assignment);
+    expect(await noteService.assignNoteToUser('note-uuid', 'bob-uuid', 1)).toEqual(linkDto);
+    expect(users.findIdByUuid).toHaveBeenCalledWith('bob-uuid');
     expect(notes.assignNoteToUser).toHaveBeenCalledWith(10, 2, 1);
   });
 });

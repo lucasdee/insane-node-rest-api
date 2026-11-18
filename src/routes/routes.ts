@@ -38,7 +38,7 @@ const models: TsoaRoute.Models = {
             "uuid": {"dataType":"string","required":true},
             "title": {"dataType":"string","required":true},
             "content": {"dataType":"string","required":true},
-            "authorId": {"dataType":"double","required":true},
+            "authorUuid": {"dataType":"string","required":true},
             "createdAt": {"dataType":"datetime","required":true},
         },
         "additionalProperties": false,
@@ -47,9 +47,9 @@ const models: TsoaRoute.Models = {
     "NoteOnUser": {
         "dataType": "refObject",
         "properties": {
-            "noteId": {"dataType":"double","required":true},
-            "userId": {"dataType":"double","required":true},
-            "assignedById": {"dataType":"double","required":true},
+            "noteUuid": {"dataType":"string","required":true},
+            "userUuid": {"dataType":"string","required":true},
+            "assignedByUuid": {"dataType":"string","required":true},
             "assignedAt": {"dataType":"datetime","required":true},
             "role": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["USER"]},{"dataType":"enum","enums":["MOD"]},{"dataType":"enum","enums":["ADMIN"]}],"required":true},
             "note": {"ref":"Note"},
@@ -69,8 +69,8 @@ const models: TsoaRoute.Models = {
     "NoteOnUserCreateRequest": {
         "dataType": "refObject",
         "properties": {
-            "noteId": {"dataType":"integer","required":true,"validators":{"isInt":{"errorMsg":"Please provide a valid note ID"}}},
-            "userId": {"dataType":"integer","required":true,"validators":{"isInt":{"errorMsg":"Please provide a valid user ID"}}},
+            "noteUuid": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid note UUID"},"pattern":{"errorMsg":"Please provide a valid note UUID","value":"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"}}},
+            "userUuid": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid user UUID"},"pattern":{"errorMsg":"Please provide a valid user UUID","value":"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"}}},
         },
         "additionalProperties": false,
     },

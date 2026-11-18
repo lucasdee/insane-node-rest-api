@@ -58,6 +58,19 @@ describe('UserRepository', () => {
     });
   });
 
+  it.each([
+    [{ id: 7 }, 7],
+    [null, null],
+  ])('findIdByUuid returns %s → %s', async (row, expected) => {
+    prisma.user.findUnique.mockResolvedValue(row);
+
+    expect(await userRepository.findIdByUuid('u-7')).toBe(expected);
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+      where: { uuid: 'u-7' },
+      select: { id: true },
+    });
+  });
+
   it('findCredentialsByUsername selects only id and password', async () => {
     prisma.user.findUnique.mockResolvedValue({ id: 1, password: 'hash' });
 

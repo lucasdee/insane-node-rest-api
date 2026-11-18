@@ -13,7 +13,10 @@ vi.mock('../../config/db', async () => ({
 const validRegister = { username: 'alice', password: 'secret123', email: 'alice@example.com' };
 const validLogin = { username: 'alice', password: 'secret123' };
 const validNote = { title: 'Title', content: 'Content' };
-const validAssign = { noteId: 1, userId: 2 };
+const validAssign = {
+  noteUuid: '123e4567-e89b-12d3-a456-426614174000',
+  userUuid: '9b2d7c1e-4f3a-4b6c-9d8e-7f6a5b4c3d2e',
+};
 
 /** A syntactically valid email address of exactly `length` characters. */
 const emailOfLength = (length: number) =>
@@ -118,9 +121,23 @@ describe.each([
     '/notes/assign',
     true,
     [
-      ['a non-integer noteId', { ...validAssign, noteId: 1.5 }, 'body.noteId'],
-      ['a string userId', { ...validAssign, userId: 'two' }, 'body.userId'],
-      ['a missing userId', { noteId: 1 }, 'body.userId'],
+      [
+        'a noteUuid that is not a uuid',
+        { ...validAssign, noteUuid: 'not-a-uuid' },
+        'body.noteUuid',
+      ],
+      ['a numeric noteUuid', { ...validAssign, noteUuid: 1 }, 'body.noteUuid'],
+      [
+        'a userUuid with trailing characters',
+        { ...validAssign, userUuid: `${validAssign.userUuid}x` },
+        'body.userUuid',
+      ],
+      ['a missing userUuid', { noteUuid: validAssign.noteUuid }, 'body.userUuid'],
+      [
+        'the old numeric userId field',
+        { noteUuid: validAssign.noteUuid, userId: 2 },
+        'body.userId',
+      ],
       ['an unknown property', { ...validAssign, role: 'ADMIN' }, 'body.role'],
     ] as Case[],
   ],
