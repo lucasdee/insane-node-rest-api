@@ -60,8 +60,8 @@ const models: TsoaRoute.Models = {
     "NoteCreateRequest": {
         "dataType": "refObject",
         "properties": {
-            "title": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid title"},"minLength":{"errorMsg":"Please provide a title that is at least 3 characters long","value":3}}},
-            "content": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide valid content"},"minLength":{"errorMsg":"Please provide content that is at least 3 characters long","value":3}}},
+            "title": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid title"},"minLength":{"errorMsg":"Please provide a title that is at least 3 characters long","value":3},"maxLength":{"errorMsg":"Please provide a title that is at most 128 characters long","value":128}}},
+            "content": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide valid content"},"minLength":{"errorMsg":"Please provide content that is at least 3 characters long","value":3},"maxLength":{"errorMsg":"Please provide content that is at most 10000 characters long","value":10000}}},
         },
         "additionalProperties": false,
     },
@@ -78,10 +78,10 @@ const models: TsoaRoute.Models = {
     "RegisterRequest": {
         "dataType": "refObject",
         "properties": {
-            "username": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid username"},"minLength":{"errorMsg":"Please provide a username that is at least 3 characters long","value":3}}},
-            "password": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid password"},"minLength":{"errorMsg":"Please provide a password that is at least 6 characters long","value":6}}},
-            "email": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid email address"},"pattern":{"errorMsg":"Please provide a valid email address","value":"^(.+)@(.+)\\.(.+)$"}}},
-            "displayName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"validators":{"isString":{"errorMsg":"Please provide a valid display name"}}},
+            "username": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid username"},"minLength":{"errorMsg":"Please provide a username that is at least 3 characters long","value":3},"maxLength":{"errorMsg":"Please provide a username that is at most 64 characters long","value":64}}},
+            "password": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid password"},"minLength":{"errorMsg":"Please provide a password that is at least 6 characters long","value":6},"maxLength":{"errorMsg":"Please provide a password that is at most 72 characters long","value":72}}},
+            "email": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid email address"},"maxLength":{"errorMsg":"Please provide an email address that is at most 128 characters long","value":128},"pattern":{"errorMsg":"Please provide a valid email address","value":"^(.+)@(.+)\\.(.+)$"}}},
+            "displayName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"validators":{"isString":{"errorMsg":"Please provide a valid display name"},"maxLength":{"errorMsg":"Please provide a display name that is at most 64 characters long","value":64}}},
         },
         "additionalProperties": false,
     },
@@ -99,8 +99,8 @@ const models: TsoaRoute.Models = {
     "LoginRequest": {
         "dataType": "refObject",
         "properties": {
-            "username": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid username"},"minLength":{"errorMsg":"Please provide a username that is at least 1 character long","value":1}}},
-            "password": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid password"},"minLength":{"errorMsg":"Please provide a password that is at least 1 character long","value":1}}},
+            "username": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid username"},"minLength":{"errorMsg":"Please provide a username that is at least 1 character long","value":1},"maxLength":{"errorMsg":"Please provide a username that is at most 64 characters long","value":64}}},
+            "password": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid password"},"minLength":{"errorMsg":"Please provide a password that is at least 1 character long","value":1},"maxLength":{"errorMsg":"Please provide a password that is at most 72 characters long","value":72}}},
         },
         "additionalProperties": false,
     },

@@ -48,7 +48,7 @@ model Note {
   id        Int       @id @default(autoincrement()) @db.UnsignedInt
   uuid      String    @unique @default(uuid()) @db.Char(36)
   title     String    @db.VarChar(128)
-  content   String
+  content   String    @db.Text
   author    User      @relation(fields: [authorId], references: [id])
   authorId  Int       @db.UnsignedInt
   createdAt DateTime  @default(now())

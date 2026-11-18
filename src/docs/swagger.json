@@ -136,12 +136,14 @@
 					"title": {
 						"type": "string",
 						"example": "My first note",
-						"minLength": 3
+						"minLength": 3,
+						"maxLength": 128
 					},
 					"content": {
 						"type": "string",
 						"example": "This is the content of my first note.",
-						"minLength": 3
+						"minLength": 3,
+						"maxLength": 10000
 					}
 				},
 				"required": [
@@ -176,23 +178,27 @@
 					"username": {
 						"type": "string",
 						"example": "newuser",
-						"minLength": 3
+						"minLength": 3,
+						"maxLength": 64
 					},
 					"password": {
 						"type": "string",
 						"example": "secret123",
-						"minLength": 6
+						"minLength": 6,
+						"maxLength": 72
 					},
 					"email": {
 						"type": "string",
 						"example": "user@example.com",
 						"format": "email",
+						"maxLength": 128,
 						"pattern": "^(.+)@(.+)\\.(.+)$"
 					},
 					"displayName": {
 						"type": "string",
 						"nullable": true,
-						"example": "John Doe"
+						"example": "John Doe",
+						"maxLength": 64
 					}
 				},
 				"required": [
@@ -233,12 +239,14 @@
 					"username": {
 						"type": "string",
 						"example": "admin",
-						"minLength": 1
+						"minLength": 1,
+						"maxLength": 64
 					},
 					"password": {
 						"type": "string",
 						"example": "admin",
-						"minLength": 1
+						"minLength": 1,
+						"maxLength": 72
 					}
 				},
 				"required": [
