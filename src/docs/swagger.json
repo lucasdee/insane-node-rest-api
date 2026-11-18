@@ -506,16 +506,16 @@
 				"responses": {
 					"204": {
 						"description": "No content"
+					},
+					"401": {
+						"description": "Missing, invalid or expired refresh token"
 					}
 				},
+				"description": "Ends the session identified by the refresh token cookie. No access token is\nneeded, so a client whose access token has expired can still log out.",
 				"tags": [
 					"Auth"
 				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
+				"security": [],
 				"parameters": []
 			}
 		},

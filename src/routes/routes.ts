@@ -342,7 +342,6 @@ export function RegisterRoutes(app: Router) {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.post('/auth/logout',
-            authenticateMiddleware([{"jwt":[]}]),
             ...(fetchMiddlewares<RequestHandler>(AuthController)),
             ...(fetchMiddlewares<RequestHandler>(AuthController.prototype.logout)),
 
