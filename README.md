@@ -162,7 +162,7 @@ npm run format:fix
 
 - Check `src/config/env.ts` for required environment variables.
 - Add or update API controllers in `src/controllers` and DTOs in `src/dtos`.
-- Add CI steps to run lint, tests and generate Prisma client during CI builds.
+- CI (`.github/workflows/ci.yml`) builds the project, checks that the committed `swagger.json` and `routes.ts` match what tsoa generates, and runs lint, the Prettier check, a type check including tests, and the tests with coverage, on pushes to `main` and on pull requests.
 
 ## License
 
