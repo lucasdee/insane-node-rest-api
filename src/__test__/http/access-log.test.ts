@@ -28,7 +28,7 @@ vi.mock('morgan', async (importOriginal) => {
   };
 });
 
-vi.mock('../../config/db', () => ({ prisma: {} }));
+vi.mock('../../config/db', () => ({ prisma: { $queryRaw: async () => [{ 1: 1 }] } }));
 
 const loadApp = async (settings: Record<string, string>) => {
   Object.entries(settings).forEach(([name, value]) => vi.stubEnv(name, value));
@@ -80,6 +80,18 @@ describe('access log file', () => {
     expect(createStream).toHaveBeenCalledWith('access.log', { interval: '1d', path: logDir });
     await vi.waitFor(() => expect(logLines).toHaveLength(1));
     expect(logLines[0]).toMatch(/"GET \/does-not-exist HTTP\/1\.1" 404 .*"access-log-test"/);
+  });
+
+  it('leaves out health probes', async () => {
+    const app = await loadApp({ ACCESS_LOG_ENABLED: 'true', ACCESS_LOG_DIR: tempDir });
+
+    expect((await request(app).get('/health')).status).toBe(200);
+    expect((await request(app).get('/health/ready')).status).toBe(200);
+    await request(app).get('/does-not-exist');
+
+    // Only the last request is logged; waiting for it also lets earlier lines arrive.
+    await vi.waitFor(() => expect(logLines).toHaveLength(1));
+    expect(logLines[0]).toContain('/does-not-exist');
   });
 });
 
