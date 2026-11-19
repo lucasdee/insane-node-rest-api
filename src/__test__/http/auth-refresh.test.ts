@@ -144,6 +144,7 @@ const invalidRefreshTokens = [
   ['a token without a subject', () => refreshTokenWithSubject(undefined)],
   ['a token with a non-numeric subject', () => refreshTokenWithSubject('abc')],
   ['a token with a zero subject', () => refreshTokenWithSubject('0')],
+  ['a token with a numeric subject instead of a string', () => refreshTokenWithSubject(1)],
 ] as const;
 
 beforeEach(() => {
@@ -189,17 +190,15 @@ describe('POST /auth/refresh', () => {
     expect(jwt.decode(refreshTokenOf(res))).toMatchObject({ sub: '1' });
   });
 
-  it('still rotates a token issued before subjects were strings', async () => {
-    const legacy = issueRefreshToken(1, 'family-a', refreshTokenWithSubject(1));
+  it('rejects a stored token whose subject is a number rather than a string', async () => {
+    const numericSubject = issueRefreshToken(1, 'family-a', refreshTokenWithSubject(1));
 
-    const res = await refresh(legacy);
+    const res = await refresh(numericSubject);
 
-    expect(res.status).toBe(200);
-    expect(jwt.decode(refreshTokenOf(res))).toMatchObject({ sub: '1' });
-    expect(store.get(hashOf(refreshTokenOf(res)))).toMatchObject({
-      userId: 1,
-      familyId: 'family-a',
-    });
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ message: 'Invalid or expired refresh token' });
+    expect(store.get(hashOf(numericSubject))).toMatchObject({ revoked: false });
+    expect(store.size).toBe(1);
   });
 
   describe('when a rotated token is reused', () => {

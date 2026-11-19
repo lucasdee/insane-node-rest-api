@@ -11,7 +11,6 @@ describe('userIdFromSubject', () => {
   it.each([
     ['a string id', '42', 42],
     ['the subject the API issues', subjectFor(7), 7],
-    ['a number, as in tokens issued before subjects were strings', 42, 42],
     ['the largest safe integer', String(Number.MAX_SAFE_INTEGER), Number.MAX_SAFE_INTEGER],
   ])('reads %s', (_label, sub, expected) => {
     expect(userIdFromSubject(sub)).toBe(expected);
@@ -30,6 +29,7 @@ describe('userIdFromSubject', () => {
     ['an exponent', '1e3'],
     ['surrounding whitespace', ' 42 '],
     ['an id beyond the safe integer range', '9007199254740993'],
+    ['a number, even a valid id', 42],
     ['a decimal number', 1.5],
     ['the number zero', 0],
     ['a negative number', -1],

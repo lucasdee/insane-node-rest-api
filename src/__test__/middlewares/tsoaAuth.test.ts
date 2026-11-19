@@ -18,14 +18,6 @@ describe('expressAuthentication', () => {
     expect(user).toEqual({ userId: 5 });
   });
 
-  it('accepts a numeric subject, as in tokens issued before subjects were strings', async () => {
-    const token = jwt.sign({ sub: 5 }, process.env.JWT_SECRET!, { expiresIn: '5m' });
-
-    await expect(expressAuthentication(requestWith(`Bearer ${token}`), 'jwt')).resolves.toEqual({
-      userId: 5,
-    });
-  });
-
   it('rejects unsupported security schemes', async () => {
     await expect(
       expressAuthentication(requestWith(`Bearer ${accessTokenFor(5)}`), 'api_key'),
@@ -63,6 +55,7 @@ describe('expressAuthentication', () => {
     ['a non-numeric subject', () => signedWithSubject('abc')],
     ['a zero subject', () => signedWithSubject('0')],
     ['a decimal subject', () => signedWithSubject(1.5)],
+    ['a numeric subject instead of a string', () => signedWithSubject(5)],
   ])('rejects %s', async (_label, makeToken) => {
     await expect(
       expressAuthentication(requestWith(`Bearer ${makeToken()}`), 'jwt'),
