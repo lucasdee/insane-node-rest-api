@@ -47,6 +47,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Fails on high or critical advisories in any dependency, dev tools included.
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
       # Prisma client, tsoa spec and routes, API types, then the TypeScript compile.
       - name: Build
         run: npm run build
