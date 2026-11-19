@@ -36,7 +36,10 @@ app.use(morgan('combined', { stream: accessLogStream }));
 
 RegisterRoutes(app);
 
-app.use('/docs', swaggerRouter);
+// Without it, /docs falls through to the JSON 404 below.
+if (env.docsEnabled) {
+  app.use('/docs', swaggerRouter);
+}
 
 // Anything no route matched: answer with JSON like the rest of the API, not Express's HTML page.
 app.use(() => {
