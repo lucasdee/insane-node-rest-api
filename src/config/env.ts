@@ -65,6 +65,17 @@ const optionalPositiveInt = (name: string, fallback: number): number => {
   return value;
 };
 
+/** Reads an optional `true`/`false`. Unset or empty means `fallback`. */
+const optionalBoolean = (name: string, fallback: boolean): boolean => {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+  if (raw === 'true') return true;
+  if (raw === 'false') return false;
+  throw new Error(`${name} must be "true" or "false", got "${raw}"`);
+};
+
+const nodeEnv = process.env.NODE_ENV || 'development';
+
 /**
  * Express's `trust proxy` setting: a number of proxy hops (e.g. `1`), `true`/`false`,
  * or a comma-separated list of trusted addresses or subnets. Unset means no proxy is
@@ -78,7 +89,7 @@ const parseTrustProxy = (raw: string | undefined): boolean | number | string => 
 };
 
 export const env = {
-  nodeEnv: process.env.NODE_ENV || 'development',
+  nodeEnv,
   port: parseInt(process.env.PORT, 10),
   corsOrigin: process.env.CORS_ORIGIN,
   jwt: {
@@ -97,6 +108,8 @@ export const env = {
     port: parseInt(process.env.DATABASE_PORT, 10),
   },
   trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
+  // Serve Swagger UI at /docs. Off in production unless turned on explicitly.
+  docsEnabled: optionalBoolean('DOCS_ENABLED', nodeEnv !== 'production'),
   // Requests per client IP to the auth endpoints, per window (see middlewares/rateLimit).
   rateLimit: {
     enabled: process.env.RATE_LIMIT_ENABLED !== 'false',

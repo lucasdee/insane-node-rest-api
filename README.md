@@ -108,7 +108,7 @@ npm run tsoa:spec
 npm run tsoa:routes
 ```
 
-The generated spec is available at `src/docs/swagger.json` and an Express route serves Swagger UI in the running app.
+The generated spec is available at `src/docs/swagger.json`, and the running app serves Swagger UI at `/docs`. It is off when `NODE_ENV=production`, unless `DOCS_ENABLED=true` is set; `DOCS_ENABLED=false` turns it off in any environment.
 
 ## API Types
 

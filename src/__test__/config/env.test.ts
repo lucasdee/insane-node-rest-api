@@ -112,6 +112,37 @@ describe('env', () => {
     expect((await loadEnv()).trustProxy).toBe(expected);
   });
 
+  describe('DOCS_ENABLED', () => {
+    it.each([
+      ['development', true],
+      ['test', true],
+      ['production', false],
+    ])('defaults to on unless in production (NODE_ENV=%s)', async (nodeEnv, expected) => {
+      vi.stubEnv('NODE_ENV', nodeEnv);
+      vi.stubEnv('DOCS_ENABLED', '');
+
+      expect((await loadEnv()).docsEnabled).toBe(expected);
+    });
+
+    it.each([
+      ['production', 'true', true],
+      ['development', 'false', false],
+    ])('overrides the default (NODE_ENV=%s, DOCS_ENABLED=%s)', async (nodeEnv, value, expected) => {
+      vi.stubEnv('NODE_ENV', nodeEnv);
+      vi.stubEnv('DOCS_ENABLED', value);
+
+      expect((await loadEnv()).docsEnabled).toBe(expected);
+    });
+
+    it.each(['yes', '1', 'TRUE'])('rejects "%s"', async (value) => {
+      vi.stubEnv('DOCS_ENABLED', value);
+
+      await expect(loadEnv()).rejects.toThrow(
+        `DOCS_ENABLED must be "true" or "false", got "${value}"`,
+      );
+    });
+  });
+
   it('exposes the configured values', async () => {
     const env = await loadEnv();
 
