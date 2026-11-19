@@ -99,6 +99,12 @@ Start the compiled app:
 npm run start
 ```
 
+## Logging
+
+Requests are logged in Apache `combined` format to `access.log`, rotated daily, in the `logs` folder of the working directory. Set `ACCESS_LOG_DIR` to use another folder (a relative path is resolved against the working directory). File logging is off when `NODE_ENV=test`, unless `ACCESS_LOG_ENABLED=true` is set; `ACCESS_LOG_ENABLED=false` turns it off in any environment.
+
+Outside production and tests, requests are also logged to the console in a short, colored format.
+
 ## OpenAPI / Swagger
 
 Generate the OpenAPI spec and routes (this is already part of `build`):
