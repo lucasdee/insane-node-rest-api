@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import app from '../../app';
+import { unsignedTokenFor } from '../helpers/tokens';
 
 type RefreshTokenRow = {
   tokenHash: string;
@@ -125,6 +126,11 @@ const invalidRefreshTokens = [
   ['an expired token', () => expiredRefreshTokenFor(1)],
   ['a token signed with the wrong secret', () => refreshTokenFor(1, 'wrong-secret')],
   ['an access token used as a refresh token', () => accessTokenFor(1)],
+  [
+    'a token signed with HS512',
+    () => jwt.sign({ sub: 1 }, REFRESH_SECRET, { algorithm: 'HS512', expiresIn: '7d' }),
+  ],
+  ['an unsigned token (alg none)', () => unsignedTokenFor(1)],
 ] as const;
 
 beforeEach(() => {

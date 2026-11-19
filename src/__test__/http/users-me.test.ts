@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import app from '../../app';
+import { unsignedTokenFor } from '../helpers/tokens';
 
 const { findUnique } = vi.hoisted(() => ({ findUnique: vi.fn() }));
 
@@ -32,6 +33,21 @@ describe('GET /users/me', () => {
     const res = await request(app).get('/users/me');
 
     expect(res.status).toBe(401);
+    expect(findUnique).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      'signed with HS512',
+      () =>
+        jwt.sign({ sub: '42' }, process.env.JWT_SECRET!, { algorithm: 'HS512', expiresIn: '5m' }),
+    ],
+    ['unsigned (alg none)', () => unsignedTokenFor('42')],
+  ])('returns 401 for an access token %s', async (_label, makeToken) => {
+    const res = await request(app).get('/users/me').set('Authorization', `Bearer ${makeToken()}`);
+
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ message: 'Invalid token' });
     expect(findUnique).not.toHaveBeenCalled();
   });
 });

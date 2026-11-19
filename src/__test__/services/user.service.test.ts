@@ -161,6 +161,8 @@ describe('UserService.login', () => {
     expect(refresh.sub).toBe(7);
     expect(access.jti).toEqual(expect.any(String));
     expect(refresh.jti).toEqual(expect.any(String));
+    expect(jwt.decode(result.accessToken, { complete: true })?.header.alg).toBe('HS256');
+    expect(jwt.decode(result.refreshToken, { complete: true })?.header.alg).toBe('HS256');
 
     expect(result.accessTokenExpiresOn).toBe(NOW.getTime() + 5 * MINUTE);
     expect(result.refreshTokenExpiresOn).toBe(NOW.getTime() + 7 * DAY);

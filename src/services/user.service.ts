@@ -1,4 +1,5 @@
 import { env } from '../config/env';
+import { JWT_ALGORITHM } from '../config/jwt';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import jwt, { JwtPayload } from 'jsonwebtoken';
@@ -42,7 +43,7 @@ const createRefreshTokenHash = (refreshToken: string): string => {
 const verifyRefreshToken = (refreshToken: string): string => {
   let payload: string | JwtPayload;
   try {
-    payload = jwt.verify(refreshToken, refreshSecret);
+    payload = jwt.verify(refreshToken, refreshSecret, { algorithms: [JWT_ALGORITHM] });
   } catch {
     throw new AuthError('Invalid or expired refresh token');
   }
@@ -63,11 +64,13 @@ const createTokens = async (userId: number, familyId: string): Promise<AuthToken
   // user within the same second are identical, and the refresh token hash collides
   // with the unique constraint on refresh_tokens.tokenHash.
   const accessToken = jwt.sign({ sub: userId }, secret, {
+    algorithm: JWT_ALGORITHM,
     expiresIn: `${accessTokenExpiresInMinutes}m`,
     jwtid: crypto.randomUUID(),
   });
   const accessTokenExpiresOn = new Date(Date.now() + accessTokenExpiresInMinutes * 60 * 1000);
   const refreshToken = jwt.sign({ sub: userId }, refreshSecret, {
+    algorithm: JWT_ALGORITHM,
     expiresIn: `${refreshTokenExpiresInDays}d`,
     jwtid: crypto.randomUUID(),
   });
