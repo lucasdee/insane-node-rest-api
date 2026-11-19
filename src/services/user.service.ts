@@ -19,6 +19,18 @@ const {
   refreshTokenExpiresInDays,
 } = env.jwt;
 
+/** bcrypt cost for stored passwords. */
+export const BCRYPT_COST = 12;
+
+/**
+ * A bcrypt hash of a random value nobody knows, at the same cost as real password
+ * hashes. Login compares against it when the username doesn't exist, so that an
+ * unknown username takes as long to reject as a wrong password and response times
+ * don't reveal which usernames are registered. Fixed rather than generated at
+ * startup, which would add a cost-12 hash to every start.
+ */
+export const DUMMY_PASSWORD_HASH = '$2b$12$iyEVqvY7RZ7iz/x65Ek6..nnmrbCXoGyfwMi//.54YBx0XGSyhDku';
+
 const createRefreshTokenHash = (refreshToken: string): string => {
   return crypto.createHmac('sha512', refreshHashSecret).update(refreshToken).digest('hex');
 };
@@ -82,7 +94,7 @@ export class UserService {
       throw new ConflictError('Username is already taken');
     }
 
-    const hashed = await bcrypt.hash(password, 12);
+    const hashed = await bcrypt.hash(password, BCRYPT_COST);
     return userRepository.createUser({ username, password: hashed, email, displayName });
   }
 
@@ -90,10 +102,10 @@ export class UserService {
     assertPasswordFitsBcrypt(password);
 
     const user = await userRepository.findCredentialsByUsername(username);
-    if (!user) throw new AuthError('Invalid credentials');
 
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) throw new AuthError('Invalid credentials');
+    // Run bcrypt even for an unknown username (see DUMMY_PASSWORD_HASH).
+    const match = await bcrypt.compare(password, user?.password ?? DUMMY_PASSWORD_HASH);
+    if (!user || !match) throw new AuthError('Invalid credentials');
 
     // Every login starts a new family: one per device or session.
     const authResponse = await createTokens(user.id, crypto.randomUUID());

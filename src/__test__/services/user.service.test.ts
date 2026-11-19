@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import bcrypt from 'bcryptjs';
 import { ValidateError } from '@tsoa/runtime';
 import jwt, { type JwtPayload } from 'jsonwebtoken';
-import { userService } from '../../services/user.service';
+import { BCRYPT_COST, DUMMY_PASSWORD_HASH, userService } from '../../services/user.service';
 import { userRepository } from '../../repositories/user.repository';
 import { tokenRepository } from '../../repositories/token.repository';
 import { AuthError, ConflictError, ForbiddenError } from '../../errors';
@@ -100,6 +100,7 @@ describe('UserService.register', () => {
     });
     expect(data.password).not.toBe('secret123');
     expect(await bcrypt.compare('secret123', data.password)).toBe(true);
+    expect(bcrypt.getRounds(data.password)).toBe(BCRYPT_COST);
   });
 });
 
@@ -112,6 +113,25 @@ describe('UserService.login', () => {
     await expect(userService.login({ username: 'ghost', password: 'x' })).rejects.toThrow(
       new AuthError('Invalid credentials'),
     );
+    expect(tokens.saveRefreshToken).not.toHaveBeenCalled();
+  });
+
+  it('still runs bcrypt for an unknown user, so it takes as long as a wrong password', async () => {
+    users.findCredentialsByUsername.mockResolvedValue(null);
+    const compare = vi.spyOn(bcrypt, 'compare');
+
+    try {
+      await expect(userService.login({ username: 'ghost', password: 'x' })).rejects.toThrow(
+        AuthError,
+      );
+      expect(compare).toHaveBeenCalledWith('x', DUMMY_PASSWORD_HASH);
+    } finally {
+      compare.mockRestore();
+    }
+  });
+
+  it('uses a dummy hash that is valid and as costly as a stored password hash', () => {
+    expect(bcrypt.getRounds(DUMMY_PASSWORD_HASH)).toBe(BCRYPT_COST);
   });
 
   it('rejects a password longer than 72 bytes before looking up the user', async () => {
