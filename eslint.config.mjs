@@ -4,7 +4,15 @@ import prettier from 'eslint-config-prettier';
 
 export default [
   {
-    ignores: ['dist', 'vitest.config.ts', 'prisma.config.ts', 'src/generated'],
+    // Build output, generated code (Prisma client, API types) and coverage reports.
+    ignores: [
+      'dist',
+      'coverage',
+      'generated',
+      'src/generated',
+      'vitest.config.ts',
+      'prisma.config.ts',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

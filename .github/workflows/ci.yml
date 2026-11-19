@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer push to the same branch or pull request cancels the run in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # src/config/env.ts refuses to load without these, and prisma.config.ts loads it
+    # during `prisma generate`. Placeholders only: nothing here connects to a database.
+    # The tests set their own values in vitest.config.ts.
+    env:
+      PORT: '3000'
+      CORS_ORIGIN: http://localhost:3000
+      JWT_SECRET: ci-secret
+      JWT_REFRESH_SECRET: ci-refresh-secret
+      JWT_REFRESH_HASH_SECRET: ci-refresh-hash-secret
+      JWT_ACCESS_TOKEN_EXPIRES_IN_MINUTES: '5'
+      JWT_REFRESH_TOKEN_EXPIRES_IN_DAYS: '7'
+      DATABASE_USER: ci
+      DATABASE_PASSWORD: ci
+      DATABASE_NAME: ci
+      DATABASE_HOST: localhost
+      DATABASE_PORT: '3306'
+      SHADOW_DATABASE_NAME: ci_shadow
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Prisma client, tsoa spec and routes, API types, then the TypeScript compile.
+      - name: Build
+        run: npm run build
+
+      - name: Check that the committed tsoa output is up to date
+        run: |
+          if ! git diff --exit-code -- src/docs/swagger.json src/routes/routes.ts; then
+            echo "::error::swagger.json or routes.ts differs from what tsoa generates. Run 'npm run tsoa:spec && npm run tsoa:routes' and commit the result."
+            exit 1
+          fi
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format
+
+      # The build's compile leaves out the tests; this checks them too.
+      - name: Type check, including tests
+        run: npx tsc --noEmit -p tsconfig.main.json
+
+      - name: Test
+        run: npm run test:coverage

@@ -264,6 +264,7 @@
 	"info": {
 		"title": "insane-node-rest-api",
 		"version": "1.0.0",
+		"description": "A compact, fully-typed REST API starter using Node.js, TypeScript, Express, Prisma (MySQL/MariaDB), and tsoa for OpenAPI generation.",
 		"license": {
 			"name": "MIT"
 		},
