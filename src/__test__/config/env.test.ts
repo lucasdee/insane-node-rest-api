@@ -50,6 +50,44 @@ describe('env', () => {
     expect(env.jwt.refreshTokenExpiresInDays).toBe(30);
   });
 
+  describe.each(['PORT', 'DATABASE_PORT'])('%s', (name) => {
+    it.each(['abc', '5abc', ' 80', '80.5', '-1', '0', '65536', '1e3'])(
+      'rejects "%s"',
+      async (value) => {
+        vi.stubEnv(name, value);
+
+        await expect(loadEnv()).rejects.toThrow(
+          `${name} must be a port number (1-65535), got "${value}"`,
+        );
+      },
+    );
+
+    it.each([
+      ['1', 1],
+      ['65535', 65535],
+    ])('accepts "%s"', async (value, expected) => {
+      vi.stubEnv(name, value);
+
+      const env = await loadEnv();
+
+      expect(name === 'PORT' ? env.port : env.db.port).toBe(expected);
+    });
+  });
+
+  it.each(['JWT_ACCESS_TOKEN_EXPIRES_IN_MINUTES', 'JWT_REFRESH_TOKEN_EXPIRES_IN_DAYS'])(
+    'rejects a %s that is not a positive integer',
+    async (name) => {
+      for (const value of ['abc', '5m', '0', '1.5', '-5']) {
+        vi.resetModules();
+        vi.stubEnv(name, value);
+
+        await expect(loadEnv()).rejects.toThrow(
+          `${name} must be a positive integer, got "${value}"`,
+        );
+      }
+    },
+  );
+
   it('defaults NODE_ENV to development', async () => {
     vi.stubEnv('NODE_ENV', '');
 
@@ -90,7 +128,15 @@ describe('env', () => {
       });
     });
 
-    it.each(['0', '-5', '2.5', 'ten'])('reject a limit of "%s"', async (value) => {
+    it.each(['flase', 'no', '0', 'TRUE'])('reject RATE_LIMIT_ENABLED="%s"', async (value) => {
+      vi.stubEnv('RATE_LIMIT_ENABLED', value);
+
+      await expect(loadEnv()).rejects.toThrow(
+        `RATE_LIMIT_ENABLED must be "true" or "false", got "${value}"`,
+      );
+    });
+
+    it.each(['0', '-5', '2.5', 'ten', '10abc'])('reject a limit of "%s"', async (value) => {
       vi.stubEnv('RATE_LIMIT_LOGIN_MAX', value);
 
       await expect(loadEnv()).rejects.toThrow(
