@@ -65,17 +65,19 @@ npm run tsoa:routes
 
 ## Database Migrations
 
-During development run:
-
-```bash
-npx prisma migrate dev --name init
-```
-
-For production deploy migrations with:
+Migrations live in `prisma/migrations` and are committed. Apply them to a new or existing database with:
 
 ```bash
 npx prisma migrate deploy
 ```
+
+After changing `prisma/schema.prisma`, create and apply a new migration during development (this uses the shadow database), then commit it:
+
+```bash
+npx prisma migrate dev --name <describe-the-change>
+```
+
+Never edit a migration that has already been applied somewhere: Prisma stores a checksum of each one and reports a mismatch.
 
 ## Development
 
