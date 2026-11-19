@@ -2,79 +2,59 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-if (!process.env.CORS_ORIGIN) {
-  throw new Error('CORS_ORIGIN is not defined in environment variables');
-}
+/*
+ * Every setting is read and checked once, when this module is imported, so that a
+ * missing or malformed value stops startup with a message naming it. An empty value
+ * counts as unset.
+ */
 
-if (!process.env.JWT_SECRET) {
-  throw new Error('JWT_SECRET is not defined in environment variables');
-}
-
-if (!process.env.JWT_REFRESH_SECRET) {
-  throw new Error('JWT_REFRESH_SECRET is not defined in environment variables');
-}
-
-if (!process.env.JWT_REFRESH_HASH_SECRET) {
-  throw new Error('JWT_REFRESH_HASH_SECRET is not defined in environment variables');
-}
-
-if (!process.env.JWT_ACCESS_TOKEN_EXPIRES_IN_MINUTES) {
-  throw new Error('JWT_ACCESS_TOKEN_EXPIRES_IN_MINUTES is not defined in environment variables');
-}
-
-if (!process.env.JWT_REFRESH_TOKEN_EXPIRES_IN_DAYS) {
-  throw new Error('JWT_REFRESH_TOKEN_EXPIRES_IN_DAYS is not defined in environment variables');
-}
-
-if (!process.env.PORT) {
-  throw new Error('PORT is not defined in environment variables');
-}
-
-if (!process.env.DATABASE_USER) {
-  throw new Error('DATABASE_USER is not defined in environment variables');
-}
-
-if (!process.env.DATABASE_PASSWORD) {
-  throw new Error('DATABASE_PASSWORD is not defined in environment variables');
-}
-
-if (!process.env.DATABASE_HOST) {
-  throw new Error('DATABASE_HOST is not defined in environment variables');
-}
-
-if (!process.env.DATABASE_NAME) {
-  throw new Error('DATABASE_NAME is not defined in environment variables');
-}
-
-if (!process.env.SHADOW_DATABASE_NAME) {
-  throw new Error('SHADOW_DATABASE_NAME is not defined in environment variables');
-}
-
-if (!process.env.DATABASE_PORT) {
-  throw new Error('DATABASE_PORT is not defined in environment variables');
-}
-
-/** Reads an optional positive integer. Unset or empty means `fallback`. */
-const optionalPositiveInt = (name: string, fallback: number): number => {
+const read = (name: string): string | undefined => {
   const raw = process.env[name];
-  if (raw === undefined || raw === '') return fallback;
+  return raw === undefined || raw === '' ? undefined : raw;
+};
+
+const required = (name: string): string => {
+  const raw = read(name);
+  if (raw === undefined) {
+    throw new Error(`${name} is not defined in environment variables`);
+  }
+  return raw;
+};
+
+/** Digits only: rejects what parseInt would quietly accept, like "5abc", " 5" or "1e3". */
+const parsePositiveInt = (name: string, raw: string): number => {
   const value = Number(raw);
-  if (!Number.isInteger(value) || value < 1) {
+  if (!/^\d+$/.test(raw) || !Number.isSafeInteger(value) || value < 1) {
     throw new Error(`${name} must be a positive integer, got "${raw}"`);
   }
   return value;
 };
 
-/** Reads an optional `true`/`false`. Unset or empty means `fallback`. */
+const requiredPositiveInt = (name: string): number => parsePositiveInt(name, required(name));
+
+/** Reads an optional positive integer. Unset means `fallback`. */
+const optionalPositiveInt = (name: string, fallback: number): number => {
+  const raw = read(name);
+  return raw === undefined ? fallback : parsePositiveInt(name, raw);
+};
+
+const requiredPort = (name: string): number => {
+  const raw = required(name);
+  const value = Number(raw);
+  if (!/^\d+$/.test(raw) || value < 1 || value > 65535) {
+    throw new Error(`${name} must be a port number (1-65535), got "${raw}"`);
+  }
+  return value;
+};
+
+/** Reads an optional `true`/`false`. Unset means `fallback`. */
 const optionalBoolean = (name: string, fallback: boolean): boolean => {
-  const raw = process.env[name];
-  if (raw === undefined || raw === '') return fallback;
+  const raw = read(name);
+  if (raw === undefined) return fallback;
   if (raw === 'true') return true;
   if (raw === 'false') return false;
   throw new Error(`${name} must be "true" or "false", got "${raw}"`);
 };
-
-const nodeEnv = process.env.NODE_ENV || 'development';
 
 /**
  * Express's `trust proxy` setting: a number of proxy hops (e.g. `1`), `true`/`false`,
@@ -82,37 +62,41 @@ const nodeEnv = process.env.NODE_ENV || 'development';
  * trusted, and the client IP is the address of the connection.
  */
 const parseTrustProxy = (raw: string | undefined): boolean | number | string => {
-  if (raw === undefined || raw === '' || raw === 'false') return false;
+  if (raw === undefined || raw === 'false') return false;
   if (raw === 'true') return true;
   if (/^\d+$/.test(raw)) return Number(raw);
   return raw;
 };
 
+const nodeEnv = read('NODE_ENV') ?? 'development';
+
 export const env = {
   nodeEnv,
-  port: parseInt(process.env.PORT, 10),
-  corsOrigin: process.env.CORS_ORIGIN,
+  port: requiredPort('PORT'),
+  corsOrigin: required('CORS_ORIGIN'),
   jwt: {
-    secret: process.env.JWT_SECRET,
-    refreshSecret: process.env.JWT_REFRESH_SECRET,
-    refreshHashSecret: process.env.JWT_REFRESH_HASH_SECRET,
-    accessTokenExpiresInMinutes: parseInt(process.env.JWT_ACCESS_TOKEN_EXPIRES_IN_MINUTES, 10),
-    refreshTokenExpiresInDays: parseInt(process.env.JWT_REFRESH_TOKEN_EXPIRES_IN_DAYS, 10),
+    secret: required('JWT_SECRET'),
+    refreshSecret: required('JWT_REFRESH_SECRET'),
+    refreshHashSecret: required('JWT_REFRESH_HASH_SECRET'),
+    accessTokenExpiresInMinutes: requiredPositiveInt('JWT_ACCESS_TOKEN_EXPIRES_IN_MINUTES'),
+    refreshTokenExpiresInDays: requiredPositiveInt('JWT_REFRESH_TOKEN_EXPIRES_IN_DAYS'),
   },
   db: {
-    user: process.env.DATABASE_USER,
-    password: process.env.DATABASE_PASSWORD,
-    host: process.env.DATABASE_HOST,
-    name: process.env.DATABASE_NAME,
-    shadowName: process.env.SHADOW_DATABASE_NAME,
-    port: parseInt(process.env.DATABASE_PORT, 10),
+    user: required('DATABASE_USER'),
+    password: required('DATABASE_PASSWORD'),
+    host: required('DATABASE_HOST'),
+    port: requiredPort('DATABASE_PORT'),
+    name: required('DATABASE_NAME'),
+    // Not used by the app itself: prisma.config.ts builds the shadow database URL from
+    // it, which `prisma migrate dev` needs.
+    shadowName: required('SHADOW_DATABASE_NAME'),
   },
-  trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
+  trustProxy: parseTrustProxy(read('TRUST_PROXY')),
   // Serve Swagger UI at /docs. Off in production unless turned on explicitly.
   docsEnabled: optionalBoolean('DOCS_ENABLED', nodeEnv !== 'production'),
   // Requests per client IP to the auth endpoints, per window (see middlewares/rateLimit).
   rateLimit: {
-    enabled: process.env.RATE_LIMIT_ENABLED !== 'false',
+    enabled: optionalBoolean('RATE_LIMIT_ENABLED', true),
     loginMax: optionalPositiveInt('RATE_LIMIT_LOGIN_MAX', 10),
     registerMax: optionalPositiveInt('RATE_LIMIT_REGISTER_MAX', 5),
     refreshMax: optionalPositiveInt('RATE_LIMIT_REFRESH_MAX', 60),
