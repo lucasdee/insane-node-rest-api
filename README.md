@@ -105,6 +105,15 @@ Requests are logged in Apache `combined` format to `access.log`, rotated daily, 
 
 Outside production and tests, requests are also logged to the console in a short, colored format.
 
+## Health Checks & Shutdown
+
+For load balancers and orchestrators, without auth and not in the access log:
+
+- `GET /health` (liveness): `200 {"status":"ok"}` while the process is running. It doesn't touch the database.
+- `GET /health/ready` (readiness): `200 {"status":"ok"}` when the database answers, `503 {"status":"unavailable"}` when it doesn't.
+
+On `SIGTERM` or `SIGINT` the server stops accepting connections, lets requests in progress finish, closes the database pool and exits. If that takes longer than 10 seconds, or a second signal arrives, it exits right away with code 1.
+
 ## OpenAPI / Swagger
 
 Generate the OpenAPI spec and routes (this is already part of `build`):

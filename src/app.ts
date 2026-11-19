@@ -11,6 +11,7 @@ import { RegisterRoutes } from './routes/routes';
 import { errorHandler } from './middlewares/errorHandler';
 import { env } from './config/env';
 import { NotFoundError } from './errors';
+import { healthRouter } from './health';
 
 const accessLogStream = (dir: string) => {
   fs.mkdirSync(dir, { recursive: true });
@@ -24,6 +25,10 @@ const app = express();
 app.set('trust proxy', env.trustProxy);
 
 app.use(helmet());
+
+// Before the request logs: probes run every few seconds and would flood them.
+app.use('/health', healthRouter);
+
 app.use(cors({ origin: env.corsOrigin, credentials: true }));
 app.use(cookieParser());
 app.use(express.json());
