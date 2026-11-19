@@ -104,7 +104,7 @@ describe('user data exposure', () => {
         displayName: 'New User',
       });
 
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(201);
       expect(Object.keys(res.body).sort()).toEqual(PUBLIC_USER_KEYS);
       expect(res.body).not.toHaveProperty('password');
       expect(res.body).not.toHaveProperty('id');

@@ -8,6 +8,7 @@ import {
   Post,
   Body,
   Response,
+  SuccessResponse,
 } from '@tsoa/runtime';
 import { AuthenticatedRequest } from './types';
 import { noteService } from '../services/note.service';
@@ -24,6 +25,7 @@ export class NotesController extends Controller {
 
   @Post('create')
   @Security('jwt')
+  @SuccessResponse(201, 'Created')
   public async createNote(
     @Request() req: AuthenticatedRequest,
     @Body() body: NoteCreateRequest,
@@ -33,6 +35,7 @@ export class NotesController extends Controller {
 
   @Post('assign')
   @Security('jwt')
+  @SuccessResponse(201, 'Created')
   @Response(403, 'Note not found or you do not have access to it')
   @Response(404, 'User not found')
   @Response(409, 'The user is already assigned to the note')
