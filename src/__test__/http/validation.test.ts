@@ -172,7 +172,7 @@ describe('maximum lengths', () => {
       false,
     );
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
     expect(res.body.email).toHaveLength(128);
   });
 
@@ -203,7 +203,7 @@ describe('maximum lengths', () => {
     const registered = await post('/auth/register', { ...validRegister, password }, false);
     const loggedIn = await post('/auth/login', { username: 'alice', password }, false);
 
-    expect(registered.status).toBe(200);
+    expect(registered.status).toBe(201);
     expect(loggedIn.status).toBe(200);
   });
 
@@ -215,7 +215,7 @@ describe('maximum lengths', () => {
       .set('Authorization', bearer(author.id))
       .send({ title: 't'.repeat(128), content: 'c'.repeat(10_000) });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
     expect(res.body.content).toHaveLength(10_000);
   });
 });

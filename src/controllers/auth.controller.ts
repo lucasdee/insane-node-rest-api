@@ -8,6 +8,7 @@ import {
   Security,
   Response,
   Request,
+  SuccessResponse,
 } from '@tsoa/runtime';
 import type { Request as ExpressRequest } from 'express';
 import { buildRefreshCookie, clearRefreshCookie } from '../utils/cookie';
@@ -22,6 +23,7 @@ import { loginRateLimit, refreshRateLimit, registerRateLimit } from '../middlewa
 @Tags('Auth')
 export class AuthController extends Controller {
   @Post('register')
+  @SuccessResponse(201, 'Created')
   @Middlewares(registerRateLimit)
   @Response(409, 'Username is already taken')
   @Response(429, 'Too many requests, please try again later')

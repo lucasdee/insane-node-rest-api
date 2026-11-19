@@ -23,7 +23,7 @@ describe('auth flow', () => {
       email: 'alice@example.com',
       displayName: 'Alice',
     });
-    expect(registered.status).toBe(200);
+    expect(registered.status).toBe(201);
     expect(registered.body).toMatchObject({ username: 'alice', role: 'USER' });
 
     // Registering the same username again conflicts

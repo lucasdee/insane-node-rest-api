@@ -74,7 +74,7 @@ describe('POST /notes/create', () => {
   it('creates the note and makes the author its ADMIN', async () => {
     const res = await createNote(alice, 'Shopping', 'Milk, eggs');
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
     expect(res.body).toMatchObject({
       uuid: expect.stringMatching(UUID),
       title: 'Shopping',
@@ -101,7 +101,7 @@ describe('POST /notes/assign', () => {
 
     const res = await assign(alice, noteUuid, bob.uuid);
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
     expect(res.body).toMatchObject({
       noteUuid,
       userUuid: bob.uuid,
@@ -131,7 +131,7 @@ describe('POST /notes/assign', () => {
 
     const res = await assign(bob, noteUuid, carol.uuid);
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
   });
 
   it('forbids a USER on the note from sharing it', async () => {
