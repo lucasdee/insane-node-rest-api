@@ -66,5 +66,10 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.54.0",
     "vitest": "^4.0.18"
+  },
+  "overrides": {
+    "@prisma/config": {
+      "effect": "3.22.4"
+    }
   }
 }
