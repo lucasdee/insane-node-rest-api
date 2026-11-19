@@ -7,7 +7,7 @@ export const accessTokenFor = (userId: number, options: jwt.SignOptions = { expi
 
 /** A validly signed refresh token. It is only accepted if its hash is also stored. */
 export const refreshTokenFor = (userId: number, secret = process.env.JWT_REFRESH_SECRET!) =>
-  jwt.sign({ sub: userId }, secret, { expiresIn: '7d', jwtid: crypto.randomUUID() });
+  jwt.sign({ sub: String(userId) }, secret, { expiresIn: '7d', jwtid: crypto.randomUUID() });
 
 /**
  * A token with `alg: none` and an empty signature, which a verifier must never

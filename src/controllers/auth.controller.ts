@@ -86,7 +86,6 @@ export class AuthController extends Controller {
   @Response(204, 'No Content')
   @Response(403, 'Only admins can revoke expired tokens')
   public async revokeExpiredTokens(@Request() req: AuthenticatedRequest): Promise<void> {
-    const userId = parseInt(req.user!.sub, 10);
-    await userService.revokeExpiredTokens(userId);
+    await userService.revokeExpiredTokens(req.user!.userId);
   }
 }

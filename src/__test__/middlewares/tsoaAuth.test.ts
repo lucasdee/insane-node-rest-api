@@ -8,11 +8,14 @@ import { accessTokenFor, refreshTokenFor, unsignedTokenFor } from '../helpers/to
 const requestWith = (authorization?: string) =>
   ({ headers: authorization === undefined ? {} : { authorization } }) as Request;
 
-describe('expressAuthentication', () => {
-  it('returns the token payload for a valid bearer token', async () => {
-    const payload = await expressAuthentication(requestWith(`Bearer ${accessTokenFor(5)}`), 'jwt');
+const signedWithSubject = (sub: unknown) =>
+  jwt.sign(sub === undefined ? {} : { sub }, process.env.JWT_SECRET!, { expiresIn: '5m' });
 
-    expect(payload.sub).toBe('5');
+describe('expressAuthentication', () => {
+  it('returns the user id for a valid bearer token', async () => {
+    const user = await expressAuthentication(requestWith(`Bearer ${accessTokenFor(5)}`), 'jwt');
+
+    expect(user).toEqual({ userId: 5 });
   });
 
   it('rejects unsupported security schemes', async () => {
@@ -47,6 +50,12 @@ describe('expressAuthentication', () => {
         jwt.sign({ sub: '5' }, process.env.JWT_SECRET!, { algorithm: 'HS512', expiresIn: '5m' }),
     ],
     ['an unsigned token (alg none)', () => unsignedTokenFor('5')],
+    // Validly signed, but without a usable user id.
+    ['a token without a subject', () => signedWithSubject(undefined)],
+    ['a non-numeric subject', () => signedWithSubject('abc')],
+    ['a zero subject', () => signedWithSubject('0')],
+    ['a decimal subject', () => signedWithSubject(1.5)],
+    ['a numeric subject instead of a string', () => signedWithSubject(5)],
   ])('rejects %s', async (_label, makeToken) => {
     await expect(
       expressAuthentication(requestWith(`Bearer ${makeToken()}`), 'jwt'),

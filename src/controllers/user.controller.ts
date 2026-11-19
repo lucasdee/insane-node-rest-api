@@ -11,9 +11,7 @@ export class UserController extends Controller {
   @Security('jwt')
   @Response(404, 'User not found')
   public async getProfile(@Request() req: AuthenticatedRequest): Promise<User> {
-    const userId = req.user!.sub;
-
-    const user = await userService.getUser(parseInt(userId, 10));
+    const user = await userService.getUser(req.user!.userId);
     if (!user) throw new NotFoundError('User not found');
 
     return user;

@@ -43,6 +43,15 @@ describe('GET /users/me', () => {
         jwt.sign({ sub: '42' }, process.env.JWT_SECRET!, { algorithm: 'HS512', expiresIn: '5m' }),
     ],
     ['unsigned (alg none)', () => unsignedTokenFor('42')],
+    [
+      'with a non-numeric subject',
+      () => jwt.sign({ sub: 'abc' }, process.env.JWT_SECRET!, { expiresIn: '5m' }),
+    ],
+    ['without a subject', () => jwt.sign({}, process.env.JWT_SECRET!, { expiresIn: '5m' })],
+    [
+      'with a numeric subject instead of a string',
+      () => jwt.sign({ sub: 42 }, process.env.JWT_SECRET!, { expiresIn: '5m' }),
+    ],
   ])('returns 401 for an access token %s', async (_label, makeToken) => {
     const res = await request(app).get('/users/me').set('Authorization', `Bearer ${makeToken()}`);
 
