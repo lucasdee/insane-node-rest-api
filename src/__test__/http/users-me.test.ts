@@ -29,6 +29,16 @@ describe('GET /users/me', () => {
     expect(findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 42 } }));
   });
 
+  it('accepts an access token issued before subjects were strings', async () => {
+    findUnique.mockResolvedValue(null);
+    const legacy = jwt.sign({ sub: 42 }, process.env.JWT_SECRET!, { expiresIn: '5m' });
+
+    const res = await request(app).get('/users/me').set('Authorization', `Bearer ${legacy}`);
+
+    expect(res.status).toBe(404);
+    expect(findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 42 } }));
+  });
+
   it('returns 401 without a token', async () => {
     const res = await request(app).get('/users/me');
 
@@ -43,6 +53,11 @@ describe('GET /users/me', () => {
         jwt.sign({ sub: '42' }, process.env.JWT_SECRET!, { algorithm: 'HS512', expiresIn: '5m' }),
     ],
     ['unsigned (alg none)', () => unsignedTokenFor('42')],
+    [
+      'with a non-numeric subject',
+      () => jwt.sign({ sub: 'abc' }, process.env.JWT_SECRET!, { expiresIn: '5m' }),
+    ],
+    ['without a subject', () => jwt.sign({}, process.env.JWT_SECRET!, { expiresIn: '5m' })],
   ])('returns 401 for an access token %s', async (_label, makeToken) => {
     const res = await request(app).get('/users/me').set('Authorization', `Bearer ${makeToken()}`);
 

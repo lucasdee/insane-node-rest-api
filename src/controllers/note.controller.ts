@@ -19,8 +19,7 @@ export class NotesController extends Controller {
   @Get('')
   @Security('jwt')
   public async listMyNotes(@Request() req: AuthenticatedRequest): Promise<NoteOnUser[]> {
-    const userId = req.user!.sub;
-    return await noteService.listUserNotes(parseInt(userId, 10));
+    return await noteService.listUserNotes(req.user!.userId);
   }
 
   @Post('create')
@@ -29,8 +28,7 @@ export class NotesController extends Controller {
     @Request() req: AuthenticatedRequest,
     @Body() body: NoteCreateRequest,
   ): Promise<Note> {
-    const userId = req.user!.sub;
-    return await noteService.createNote(body.title, body.content, parseInt(userId, 10));
+    return await noteService.createNote(body.title, body.content, req.user!.userId);
   }
 
   @Post('assign')
@@ -42,11 +40,6 @@ export class NotesController extends Controller {
     @Request() req: AuthenticatedRequest,
     @Body() body: NoteOnUserCreateRequest,
   ): Promise<NoteOnUser> {
-    const assignedById = req.user!.sub;
-    return await noteService.assignNoteToUser(
-      body.noteUuid,
-      body.userUuid,
-      parseInt(assignedById, 10),
-    );
+    return await noteService.assignNoteToUser(body.noteUuid, body.userUuid, req.user!.userId);
   }
 }

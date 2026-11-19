@@ -11,6 +11,7 @@ import { AuthTokens } from './types';
 import { User } from '../dtos/user.dto';
 import { Role } from '../generated/prisma/enums';
 import { assertPasswordFitsBcrypt } from '../utils/password';
+import { subjectFor, userIdFromSubject } from '../utils/jwtSubject';
 
 const {
   secret,
@@ -37,10 +38,10 @@ const createRefreshTokenHash = (refreshToken: string): string => {
 };
 
 /**
- * Verifies a refresh token's signature and expiry and returns its subject.
+ * Verifies a refresh token's signature and expiry and returns the user id in it.
  * Any failure is reported as an AuthError (401), never as a raw jsonwebtoken error.
  */
-const verifyRefreshToken = (refreshToken: string): string => {
+const verifyRefreshToken = (refreshToken: string): number => {
   let payload: string | JwtPayload;
   try {
     payload = jwt.verify(refreshToken, refreshSecret, { algorithms: [JWT_ALGORITHM] });
@@ -48,11 +49,10 @@ const verifyRefreshToken = (refreshToken: string): string => {
     throw new AuthError('Invalid or expired refresh token');
   }
 
-  if (typeof payload === 'string' || payload.sub === undefined) {
-    throw new AuthError('Invalid or expired refresh token');
-  }
+  const userId = typeof payload === 'string' ? null : userIdFromSubject(payload.sub);
+  if (userId === null) throw new AuthError('Invalid or expired refresh token');
 
-  return String(payload.sub);
+  return userId;
 };
 
 /**
@@ -63,13 +63,13 @@ const createTokens = async (userId: number, familyId: string): Promise<AuthToken
   // A random `jti` makes every token unique. Without it, tokens issued for the same
   // user within the same second are identical, and the refresh token hash collides
   // with the unique constraint on refresh_tokens.tokenHash.
-  const accessToken = jwt.sign({ sub: userId }, secret, {
+  const accessToken = jwt.sign({ sub: subjectFor(userId) }, secret, {
     algorithm: JWT_ALGORITHM,
     expiresIn: `${accessTokenExpiresInMinutes}m`,
     jwtid: crypto.randomUUID(),
   });
   const accessTokenExpiresOn = new Date(Date.now() + accessTokenExpiresInMinutes * 60 * 1000);
-  const refreshToken = jwt.sign({ sub: userId }, refreshSecret, {
+  const refreshToken = jwt.sign({ sub: subjectFor(userId) }, refreshSecret, {
     algorithm: JWT_ALGORITHM,
     expiresIn: `${refreshTokenExpiresInDays}d`,
     jwtid: crypto.randomUUID(),
@@ -117,15 +117,13 @@ export class UserService {
   }
 
   async refreshAccessToken(currentRefreshToken: string): Promise<AuthTokens> {
-    const subject = verifyRefreshToken(currentRefreshToken);
+    const userId = verifyRefreshToken(currentRefreshToken);
 
     const currentRefreshTokenHash = createRefreshTokenHash(currentRefreshToken);
 
     const storedToken = await tokenRepository.findRefreshToken(currentRefreshTokenHash);
     if (!storedToken)
       throw new AuthError('Could not find refresh token in database, it might have been revoked');
-
-    const userId = parseInt(subject, 10);
 
     if (storedToken.userId !== userId) {
       await tokenRepository.revokeRefreshToken(currentRefreshTokenHash);

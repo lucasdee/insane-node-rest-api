@@ -84,11 +84,17 @@ vi.mock('../../config/db', () => ({ prisma: { refreshToken } }));
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET!;
 
 // A unique jti, as the API sets, so that two tokens signed in the same second differ.
+const refreshTokenWithSubject = (sub: unknown, secret = REFRESH_SECRET) =>
+  jwt.sign(sub === undefined ? {} : { sub }, secret, {
+    expiresIn: '7d',
+    jwtid: crypto.randomUUID(),
+  });
+
 const refreshTokenFor = (userId: number, secret = REFRESH_SECRET) =>
-  jwt.sign({ sub: userId }, secret, { expiresIn: '7d', jwtid: crypto.randomUUID() });
+  refreshTokenWithSubject(String(userId), secret);
 
 const expiredRefreshTokenFor = (userId: number) =>
-  jwt.sign({ sub: userId, exp: Math.floor(Date.now() / 1000) - 60 }, REFRESH_SECRET);
+  jwt.sign({ sub: String(userId), exp: Math.floor(Date.now() / 1000) - 60 }, REFRESH_SECRET);
 
 const accessTokenFor = (userId: number) =>
   jwt.sign({ sub: String(userId) }, process.env.JWT_SECRET!, { expiresIn: '5m' });
@@ -97,8 +103,11 @@ const hashOf = (token: string) =>
   crypto.createHmac('sha512', process.env.JWT_REFRESH_HASH_SECRET!).update(token).digest('hex');
 
 /** Signs a refresh token and stores it as an active session (its own family by default). */
-const issueRefreshToken = (userId: number, familyId: string = crypto.randomUUID()) => {
-  const token = refreshTokenFor(userId);
+const issueRefreshToken = (
+  userId: number,
+  familyId: string = crypto.randomUUID(),
+  token = refreshTokenFor(userId),
+) => {
   store.set(hashOf(token), {
     tokenHash: hashOf(token),
     userId,
@@ -130,7 +139,11 @@ const invalidRefreshTokens = [
     'a token signed with HS512',
     () => jwt.sign({ sub: 1 }, REFRESH_SECRET, { algorithm: 'HS512', expiresIn: '7d' }),
   ],
-  ['an unsigned token (alg none)', () => unsignedTokenFor(1)],
+  ['an unsigned token (alg none)', () => unsignedTokenFor('1')],
+  // Validly signed, but without a usable user id.
+  ['a token without a subject', () => refreshTokenWithSubject(undefined)],
+  ['a token with a non-numeric subject', () => refreshTokenWithSubject('abc')],
+  ['a token with a zero subject', () => refreshTokenWithSubject('0')],
 ] as const;
 
 beforeEach(() => {
@@ -166,6 +179,26 @@ describe('POST /auth/refresh', () => {
       revoked: false,
       familyId: 'family-a',
       userId: 1,
+    });
+  });
+
+  it('issues tokens whose subject is the user id as a string', async () => {
+    const res = await refresh(issueRefreshToken(1));
+
+    expect(jwt.decode(res.body.accessToken)).toMatchObject({ sub: '1' });
+    expect(jwt.decode(refreshTokenOf(res))).toMatchObject({ sub: '1' });
+  });
+
+  it('still rotates a token issued before subjects were strings', async () => {
+    const legacy = issueRefreshToken(1, 'family-a', refreshTokenWithSubject(1));
+
+    const res = await refresh(legacy);
+
+    expect(res.status).toBe(200);
+    expect(jwt.decode(refreshTokenOf(res))).toMatchObject({ sub: '1' });
+    expect(store.get(hashOf(refreshTokenOf(res)))).toMatchObject({
+      userId: 1,
+      familyId: 'family-a',
     });
   });
 

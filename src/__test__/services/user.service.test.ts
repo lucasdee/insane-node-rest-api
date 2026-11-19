@@ -157,8 +157,8 @@ describe('UserService.login', () => {
 
     const access = jwt.verify(result.accessToken, process.env.JWT_SECRET!) as JwtPayload;
     const refresh = jwt.verify(result.refreshToken, process.env.JWT_REFRESH_SECRET!) as JwtPayload;
-    expect(access.sub).toBe(7);
-    expect(refresh.sub).toBe(7);
+    expect(access.sub).toBe('7');
+    expect(refresh.sub).toBe('7');
     expect(access.jti).toEqual(expect.any(String));
     expect(refresh.jti).toEqual(expect.any(String));
     expect(jwt.decode(result.accessToken, { complete: true })?.header.alg).toBe('HS256');
