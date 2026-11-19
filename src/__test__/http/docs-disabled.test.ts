@@ -8,6 +8,8 @@ import app from '../../app';
 vi.hoisted(() => {
   vi.stubEnv('NODE_ENV', 'production');
   vi.stubEnv('DOCS_ENABLED', '');
+  // Production would otherwise write this test's requests to ./logs.
+  vi.stubEnv('ACCESS_LOG_ENABLED', 'false');
 });
 
 vi.mock('../../config/db', () => ({ prisma: {} }));

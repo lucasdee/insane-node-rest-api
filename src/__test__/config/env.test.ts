@@ -1,3 +1,4 @@
+import path from 'path';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const REQUIRED = [
@@ -156,6 +157,49 @@ describe('env', () => {
     vi.stubEnv('TRUST_PROXY', value);
 
     expect((await loadEnv()).trustProxy).toBe(expected);
+  });
+
+  describe('access log', () => {
+    it.each([
+      ['development', true],
+      ['production', true],
+      ['test', false],
+    ])('is on by default unless in tests (NODE_ENV=%s)', async (nodeEnv, expected) => {
+      vi.stubEnv('NODE_ENV', nodeEnv);
+      vi.stubEnv('ACCESS_LOG_ENABLED', '');
+
+      expect((await loadEnv()).accessLog.enabled).toBe(expected);
+    });
+
+    it('can be turned on in tests and off elsewhere', async () => {
+      vi.stubEnv('ACCESS_LOG_ENABLED', 'true');
+      expect((await loadEnv()).accessLog.enabled).toBe(true);
+
+      vi.resetModules();
+      vi.stubEnv('NODE_ENV', 'production');
+      vi.stubEnv('ACCESS_LOG_ENABLED', 'false');
+      expect((await loadEnv()).accessLog.enabled).toBe(false);
+    });
+
+    it('rejects an ACCESS_LOG_ENABLED other than true or false', async () => {
+      vi.stubEnv('ACCESS_LOG_ENABLED', 'yes');
+
+      await expect(loadEnv()).rejects.toThrow(
+        'ACCESS_LOG_ENABLED must be "true" or "false", got "yes"',
+      );
+    });
+
+    it('writes to "logs" in the working directory by default', async () => {
+      vi.stubEnv('ACCESS_LOG_DIR', '');
+
+      expect((await loadEnv()).accessLog.dir).toBe(path.resolve(process.cwd(), 'logs'));
+    });
+
+    it('resolves a configured directory against the working directory', async () => {
+      vi.stubEnv('ACCESS_LOG_DIR', 'var/log/api');
+
+      expect((await loadEnv()).accessLog.dir).toBe(path.resolve(process.cwd(), 'var/log/api'));
+    });
   });
 
   describe('DOCS_ENABLED', () => {
