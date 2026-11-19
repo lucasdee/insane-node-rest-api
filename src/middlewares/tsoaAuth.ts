@@ -1,4 +1,5 @@
 import { env } from '../config/env';
+import { JWT_ALGORITHM } from '../config/jwt';
 import jwt, { type JwtPayload } from 'jsonwebtoken';
 import type { Request } from 'express';
 import { AuthError } from '../errors';
@@ -20,7 +21,7 @@ export const expressAuthentication = async (
   const secret = env.jwt.secret;
 
   try {
-    const decoded = jwt.verify(token, secret) as JwtPayload;
+    const decoded = jwt.verify(token, secret, { algorithms: [JWT_ALGORITHM] }) as JwtPayload;
     return decoded;
   } catch {
     throw new AuthError('Invalid token');

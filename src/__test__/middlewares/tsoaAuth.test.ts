@@ -3,7 +3,7 @@ import type { Request } from 'express';
 import jwt from 'jsonwebtoken';
 import { expressAuthentication } from '../../middlewares/tsoaAuth';
 import { AuthError } from '../../errors';
-import { accessTokenFor, refreshTokenFor } from '../helpers/tokens';
+import { accessTokenFor, refreshTokenFor, unsignedTokenFor } from '../helpers/tokens';
 
 const requestWith = (authorization?: string) =>
   ({ headers: authorization === undefined ? {} : { authorization } }) as Request;
@@ -40,6 +40,13 @@ describe('expressAuthentication', () => {
       () => jwt.sign({ sub: '5' }, 'wrong-secret', { expiresIn: '5m' }),
     ],
     ['a refresh token', () => refreshTokenFor(5)],
+    // The right secret, but not the algorithm the API signs with.
+    [
+      'a token signed with HS512',
+      () =>
+        jwt.sign({ sub: '5' }, process.env.JWT_SECRET!, { algorithm: 'HS512', expiresIn: '5m' }),
+    ],
+    ['an unsigned token (alg none)', () => unsignedTokenFor('5')],
   ])('rejects %s', async (_label, makeToken) => {
     await expect(
       expressAuthentication(requestWith(`Bearer ${makeToken()}`), 'jwt'),
