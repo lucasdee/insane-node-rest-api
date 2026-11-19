@@ -3,7 +3,6 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import path from 'path';
 import fs from 'fs';
 import { createStream } from 'rotating-file-stream';
 
@@ -13,13 +12,10 @@ import { errorHandler } from './middlewares/errorHandler';
 import { env } from './config/env';
 import { NotFoundError } from './errors';
 
-const logsDir = path.join(__dirname, 'logs');
-fs.mkdirSync(logsDir, { recursive: true });
-
-const accessLogStream = createStream('access.log', {
-  interval: '1d',
-  path: logsDir,
-});
+const accessLogStream = (dir: string) => {
+  fs.mkdirSync(dir, { recursive: true });
+  return createStream('access.log', { interval: '1d', path: dir });
+};
 
 const app = express();
 
@@ -31,8 +27,14 @@ app.use(helmet());
 app.use(cors({ origin: env.corsOrigin, credentials: true }));
 app.use(cookieParser());
 app.use(express.json());
-app.use(morgan('dev'));
-app.use(morgan('combined', { stream: accessLogStream }));
+// Colored, short request lines on the console while developing. Production relies on
+// the access log file, and tests stay quiet.
+if (env.nodeEnv !== 'production' && env.nodeEnv !== 'test') {
+  app.use(morgan('dev'));
+}
+if (env.accessLog.enabled) {
+  app.use(morgan('combined', { stream: accessLogStream(env.accessLog.dir) }));
+}
 
 RegisterRoutes(app);
 

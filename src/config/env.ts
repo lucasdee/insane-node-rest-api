@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import path from 'path';
 
 dotenv.config();
 
@@ -92,6 +93,12 @@ export const env = {
     shadowName: required('SHADOW_DATABASE_NAME'),
   },
   trustProxy: parseTrustProxy(read('TRUST_PROXY')),
+  // Access log file, rotated daily (see app.ts). A relative directory is resolved
+  // against the working directory. Off in tests, so test requests don't end up in it.
+  accessLog: {
+    enabled: optionalBoolean('ACCESS_LOG_ENABLED', nodeEnv !== 'test'),
+    dir: path.resolve(read('ACCESS_LOG_DIR') ?? 'logs'),
+  },
   // Serve Swagger UI at /docs. Off in production unless turned on explicitly.
   docsEnabled: optionalBoolean('DOCS_ENABLED', nodeEnv !== 'production'),
   // Requests per client IP to the auth endpoints, per window (see middlewares/rateLimit).
