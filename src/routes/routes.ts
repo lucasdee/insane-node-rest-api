@@ -2,7 +2,8 @@
 /* eslint-disable */
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import type { TsoaRoute } from '@tsoa/runtime';
-import {  fetchMiddlewares, ExpressTemplateService } from '@tsoa/runtime';
+import { fetchMiddlewares, failureToReport, isAnonymousFallback } from '@tsoa/runtime';
+import { ExpressTemplateService } from '@tsoa/runtime/express';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { UserController } from './../controllers/user.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
@@ -69,8 +70,8 @@ const models: TsoaRoute.Models = {
     "NoteOnUserCreateRequest": {
         "dataType": "refObject",
         "properties": {
-            "noteUuid": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid note UUID"},"pattern":{"errorMsg":"Please provide a valid note UUID","value":"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"}}},
-            "userUuid": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid user UUID"},"pattern":{"errorMsg":"Please provide a valid user UUID","value":"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"}}},
+            "noteUuid": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid note UUID"},"pattern":{"value":"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$","errorMsg":"Please provide a valid note UUID"}}},
+            "userUuid": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid user UUID"},"pattern":{"value":"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$","errorMsg":"Please provide a valid user UUID"}}},
         },
         "additionalProperties": false,
     },
@@ -80,7 +81,7 @@ const models: TsoaRoute.Models = {
         "properties": {
             "username": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid username"},"minLength":{"errorMsg":"Please provide a username that is at least 3 characters long","value":3},"maxLength":{"errorMsg":"Please provide a username that is at most 64 characters long","value":64}}},
             "password": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid password"},"minLength":{"errorMsg":"Please provide a password that is at least 6 characters long","value":6},"maxLength":{"errorMsg":"Please provide a password that is at most 72 characters long","value":72}}},
-            "email": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid email address"},"maxLength":{"errorMsg":"Please provide an email address that is at most 128 characters long","value":128},"pattern":{"errorMsg":"Please provide a valid email address","value":"^(.+)@(.+)\\.(.+)$"}}},
+            "email": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid email address"},"maxLength":{"errorMsg":"Please provide an email address that is at most 128 characters long","value":128},"pattern":{"value":"^(.+)@(.+)\\.(.+)$","errorMsg":"Please provide a valid email address"}}},
             "displayName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"validators":{"isString":{"errorMsg":"Please provide a valid display name"},"maxLength":{"errorMsg":"Please provide a display name that is at most 64 characters long","value":64}}},
         },
         "additionalProperties": false,
@@ -136,7 +137,7 @@ export function RegisterRoutes(app: Router) {
 
             let validatedArgs: any[] = [];
             try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsUserController_getProfile, request, response });
+                validatedArgs = templateService.getValidatedArgs({ args: argsUserController_getProfile, request, response, next });
 
                 const controller = new UserController();
 
@@ -167,7 +168,7 @@ export function RegisterRoutes(app: Router) {
 
             let validatedArgs: any[] = [];
             try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsNotesController_listMyNotes, request, response });
+                validatedArgs = templateService.getValidatedArgs({ args: argsNotesController_listMyNotes, request, response, next });
 
                 const controller = new NotesController();
 
@@ -199,7 +200,7 @@ export function RegisterRoutes(app: Router) {
 
             let validatedArgs: any[] = [];
             try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsNotesController_createNote, request, response });
+                validatedArgs = templateService.getValidatedArgs({ args: argsNotesController_createNote, request, response, next });
 
                 const controller = new NotesController();
 
@@ -231,7 +232,7 @@ export function RegisterRoutes(app: Router) {
 
             let validatedArgs: any[] = [];
             try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsNotesController_assignNoteToUser, request, response });
+                validatedArgs = templateService.getValidatedArgs({ args: argsNotesController_assignNoteToUser, request, response, next });
 
                 const controller = new NotesController();
 
@@ -261,7 +262,7 @@ export function RegisterRoutes(app: Router) {
 
             let validatedArgs: any[] = [];
             try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsAuthController_register, request, response });
+                validatedArgs = templateService.getValidatedArgs({ args: argsAuthController_register, request, response, next });
 
                 const controller = new AuthController();
 
@@ -291,7 +292,7 @@ export function RegisterRoutes(app: Router) {
 
             let validatedArgs: any[] = [];
             try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsAuthController_login, request, response });
+                validatedArgs = templateService.getValidatedArgs({ args: argsAuthController_login, request, response, next });
 
                 const controller = new AuthController();
 
@@ -321,7 +322,7 @@ export function RegisterRoutes(app: Router) {
 
             let validatedArgs: any[] = [];
             try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsAuthController_refresh, request, response });
+                validatedArgs = templateService.getValidatedArgs({ args: argsAuthController_refresh, request, response, next });
 
                 const controller = new AuthController();
 
@@ -351,7 +352,7 @@ export function RegisterRoutes(app: Router) {
 
             let validatedArgs: any[] = [];
             try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsAuthController_logout, request, response });
+                validatedArgs = templateService.getValidatedArgs({ args: argsAuthController_logout, request, response, next });
 
                 const controller = new AuthController();
 
@@ -382,7 +383,7 @@ export function RegisterRoutes(app: Router) {
 
             let validatedArgs: any[] = [];
             try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsAuthController_revokeExpiredTokens, request, response });
+                validatedArgs = templateService.getValidatedArgs({ args: argsAuthController_revokeExpiredTokens, request, response, next });
 
                 const controller = new AuthController();
 
@@ -420,6 +421,7 @@ export function RegisterRoutes(app: Router) {
             };
 
             const secMethodOrPromises: Promise<any>[] = [];
+            const attempts: Promise<any>[] = [];
             for (const secMethod of security) {
                 if (Object.keys(secMethod).length > 1) {
                     const secMethodAndPromises: Promise<any>[] = [];
@@ -433,14 +435,14 @@ export function RegisterRoutes(app: Router) {
 
                     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
+                    attempts.push(...secMethodAndPromises);
                     secMethodOrPromises.push(Promise.all(secMethodAndPromises)
                         .then(users => { return users[0]; }));
                 } else {
                     for (const name in secMethod) {
-                        secMethodOrPromises.push(
-                            expressAuthenticationRecasted(request, name, secMethod[name], response)
-                                .catch(pushAndRethrow)
-                        );
+                        const attempt = expressAuthenticationRecasted(request, name, secMethod[name], response).catch(pushAndRethrow);
+                        attempts.push(attempt);
+                        secMethodOrPromises.push(attempt);
                     }
                 }
             }
@@ -458,14 +460,21 @@ export function RegisterRoutes(app: Router) {
                 next();
             }
             catch(err) {
-                // Show most recent error as response
-                const error = failedAttempts.pop();
-                error.status = error.status || 401;
+                // An empty security entry (`@Security({})`) allows requests without credentials
+                const fallback = isAnonymousFallback(security, attempts);
+                const anonymous = fallback !== false && (await fallback);
 
                 // Response was sent in middleware, abort
                 if (response.writableEnded) {
                     return;
                 }
+
+                if (anonymous) {
+                    return next();
+                }
+
+                const error = failureToReport(security, failedAttempts);
+                error.status = error.status || 401;
                 next(error);
             }
 
