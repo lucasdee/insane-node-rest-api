@@ -73,6 +73,7 @@ describe('Prisma errors are not leaked to clients', () => {
       const res = await assign();
 
       expect(res.status).toBe(409);
+      expect(res.body).toEqual({ message: 'The user is already assigned to the note' });
       expectNoInternals(res.body);
     });
 

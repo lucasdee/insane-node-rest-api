@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { noteService } from '../../services/note.service';
 import { noteRepository } from '../../repositories/note.repository';
 import { userRepository } from '../../repositories/user.repository';
-import { ForbiddenError, NotFoundError } from '../../errors';
+import { ConflictError, ForbiddenError, NotFoundError } from '../../errors';
+import { Prisma } from '../../generated/prisma/client';
 
 vi.mock('../../repositories/note.repository', () => ({
   noteRepository: {
@@ -131,6 +132,33 @@ describe('NoteService.assignNoteToUser', () => {
       new NotFoundError('User not found'),
     );
     expect(notes.assignNoteToUser).not.toHaveBeenCalled();
+  });
+
+  it('reports a user who is already assigned as a conflict', async () => {
+    notes.findNoteAccess.mockResolvedValue(accessWithCallerRole('ADMIN'));
+    users.findIdByUuid.mockResolvedValue(2);
+    notes.assignNoteToUser.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed on PRIMARY', {
+        code: 'P2002',
+        clientVersion: 'test',
+      }),
+    );
+
+    await expect(noteService.assignNoteToUser('note-uuid', 'bob-uuid', 1)).rejects.toThrow(
+      new ConflictError('The user is already assigned to the note'),
+    );
+  });
+
+  it('passes other database errors through unchanged', async () => {
+    const fkError = new Prisma.PrismaClientKnownRequestError('Foreign key constraint violated', {
+      code: 'P2003',
+      clientVersion: 'test',
+    });
+    notes.findNoteAccess.mockResolvedValue(accessWithCallerRole('ADMIN'));
+    users.findIdByUuid.mockResolvedValue(2);
+    notes.assignNoteToUser.mockRejectedValue(fkError);
+
+    await expect(noteService.assignNoteToUser('note-uuid', 'bob-uuid', 1)).rejects.toBe(fkError);
   });
 
   it.each(['MOD', 'ADMIN'] as const)('allows a caller with the %s role', async (role) => {
