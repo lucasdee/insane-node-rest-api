@@ -6,8 +6,9 @@ import {
 } from '../repositories/note.repository';
 import { userRepository } from '../repositories/user.repository';
 import { Note, NoteOnUser } from '../dtos/note.dto';
+import { Prisma } from '../generated/prisma/client';
 import { Role } from '../generated/prisma/enums';
-import { ForbiddenError, NotFoundError } from '../errors';
+import { ConflictError, ForbiddenError, NotFoundError } from '../errors';
 
 const toNote = (note: PublicNote): Note => ({
   uuid: note.uuid,
@@ -62,7 +63,16 @@ export class NoteService {
       throw new NotFoundError('User not found');
     }
 
-    return toNoteOnUser(await noteRepository.assignNoteToUser(note.id, userId, assignedById));
+    try {
+      return toNoteOnUser(await noteRepository.assignNoteToUser(note.id, userId, assignedById));
+    } catch (err) {
+      // The (noteId, userId) primary key rejects a second assignment. Relying on it
+      // instead of checking first also covers two identical requests at once.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new ConflictError('The user is already assigned to the note');
+      }
+      throw err;
+    }
   }
 }
 

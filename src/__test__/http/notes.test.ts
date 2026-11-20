@@ -166,6 +166,8 @@ describe('POST /notes/assign', () => {
     const res = await assign(alice, noteUuid, bob.uuid);
 
     expect(res.status).toBe(409);
+    expect(res.body).toEqual({ message: 'The user is already assigned to the note' });
+    expect(fakeDb.notesOnUsers).toHaveLength(2);
   });
 
   it('returns 404 when the target user does not exist', async () => {
