@@ -62,7 +62,7 @@
     "swagger-typescript-api": "^13.2.18",
     "tsoa": "^7.0.0-rc.0",
     "tsx": "^4.23.15",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.54.0",
     "vitest": "^5.1.1"
   },

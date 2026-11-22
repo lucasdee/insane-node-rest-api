@@ -6,7 +6,7 @@ import { fakeDb, resetFakeDb, seedUser, type UserRow } from '../helpers/fake-pri
 import { bearer } from '../helpers/tokens';
 
 vi.mock('../../config/db', async () => ({
-  prisma: (await import('../helpers/fake-prisma')).fakePrisma,
+  prisma: (await import('../helpers/fake-prisma.js')).fakePrisma,
 }));
 
 let alice: UserRow;

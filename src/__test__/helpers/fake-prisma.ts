@@ -11,7 +11,7 @@ import { Prisma } from '../../generated/prisma/client';
  *
  * Use it from a test file with:
  *   vi.mock('../../config/db', async () => ({
- *     prisma: (await import('../helpers/fake-prisma')).fakePrisma,
+ *     prisma: (await import('../helpers/fake-prisma.js')).fakePrisma,
  *   }));
  */
 

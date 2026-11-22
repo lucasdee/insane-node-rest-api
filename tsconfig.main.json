@@ -2,7 +2,7 @@
   "compilerOptions": {
     "incremental": true,
     "target": "ESNext",
-    "module": "commonjs",
+    "module": "nodenext",
     "rootDir": "./src",
     "outDir": "./dist",
 
@@ -23,8 +23,8 @@
     "noFallthroughCasesInSwitch": true,
 
     /* Module Resolution Options */
-    "moduleResolution": "node",
-    "baseUrl": ".",
+    "moduleResolution": "node16",
+    /* "baseUrl": ".", */
     "esModuleInterop": true,
     "resolveJsonModule": true,
 

@@ -4,7 +4,7 @@ import app from '../../app';
 import { fakeDb, resetFakeDb } from '../helpers/fake-prisma';
 
 vi.mock('../../config/db', async () => ({
-  prisma: (await import('../helpers/fake-prisma')).fakePrisma,
+  prisma: (await import('../helpers/fake-prisma.js')).fakePrisma,
 }));
 
 const refreshCookieOf = (res: request.Response) =>

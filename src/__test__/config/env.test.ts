@@ -18,7 +18,7 @@ const REQUIRED = [
 ];
 
 // env.ts runs its checks when imported, so each test imports a fresh copy.
-const loadEnv = async () => (await import('../../config/env')).env;
+const loadEnv = async () => (await import('../../config/env.js')).env;
 
 beforeEach(() => {
   vi.resetModules();

@@ -12,7 +12,7 @@ vi.mock('@prisma/adapter-mariadb', () => ({
 
 describe('prisma client config', () => {
   it('omits user password hashes globally', async () => {
-    await import('../../config/db');
+    await import('../../config/db.js');
 
     expect(PrismaClient).toHaveBeenCalledOnce();
     expect(PrismaClient).toHaveBeenCalledWith(
