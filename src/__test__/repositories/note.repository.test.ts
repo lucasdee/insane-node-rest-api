@@ -81,13 +81,13 @@ describe('NoteRepository', () => {
     });
   });
 
-  it('assignNoteToUser records who made the assignment and returns only public fields', async () => {
+  it('assignNoteToUser records who made the assignment and the role, and returns only public fields', async () => {
     prisma.noteOnUser.create.mockResolvedValue({});
 
-    await noteRepository.assignNoteToUser(10, 2, 1);
+    await noteRepository.assignNoteToUser(10, 2, 1, 'MOD');
 
     expect(prisma.noteOnUser.create).toHaveBeenCalledWith({
-      data: { noteId: 10, userId: 2, assignedById: 1 },
+      data: { noteId: 10, userId: 2, assignedById: 1, role: 'MOD' },
       select: publicNoteOnUserSelect,
     });
   });

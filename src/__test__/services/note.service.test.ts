@@ -161,13 +161,60 @@ describe('NoteService.assignNoteToUser', () => {
     await expect(noteService.assignNoteToUser('note-uuid', 'bob-uuid', 1)).rejects.toBe(fkError);
   });
 
-  it.each(['MOD', 'ADMIN'] as const)('allows a caller with the %s role', async (role) => {
-    notes.findNoteAccess.mockResolvedValue(accessWithCallerRole(role));
+  it.each(['MOD', 'ADMIN'] as const)(
+    'allows a caller with the %s role to assign as USER by default',
+    async (role) => {
+      notes.findNoteAccess.mockResolvedValue(accessWithCallerRole(role));
+      users.findIdByUuid.mockResolvedValue(2);
+      notes.assignNoteToUser.mockResolvedValue(publicLink);
+
+      expect(await noteService.assignNoteToUser('note-uuid', 'bob-uuid', 1)).toEqual(linkDto);
+      expect(users.findIdByUuid).toHaveBeenCalledWith('bob-uuid');
+      expect(notes.assignNoteToUser).toHaveBeenCalledWith(10, 2, 1, 'USER');
+    },
+  );
+
+  it.each(['USER', 'MOD', 'ADMIN'] as const)('lets an ADMIN assign the %s role', async (role) => {
+    notes.findNoteAccess.mockResolvedValue(accessWithCallerRole('ADMIN'));
+    users.findIdByUuid.mockResolvedValue(2);
+    notes.assignNoteToUser.mockResolvedValue({ ...publicLink, role });
+
+    expect(await noteService.assignNoteToUser('note-uuid', 'bob-uuid', 1, role)).toEqual({
+      ...linkDto,
+      role,
+    });
+    expect(notes.assignNoteToUser).toHaveBeenCalledWith(10, 2, 1, role);
+  });
+
+  it('lets a MOD assign the USER role explicitly', async () => {
+    notes.findNoteAccess.mockResolvedValue(accessWithCallerRole('MOD'));
     users.findIdByUuid.mockResolvedValue(2);
     notes.assignNoteToUser.mockResolvedValue(publicLink);
 
-    expect(await noteService.assignNoteToUser('note-uuid', 'bob-uuid', 1)).toEqual(linkDto);
-    expect(users.findIdByUuid).toHaveBeenCalledWith('bob-uuid');
-    expect(notes.assignNoteToUser).toHaveBeenCalledWith(10, 2, 1);
+    await noteService.assignNoteToUser('note-uuid', 'bob-uuid', 1, 'USER');
+
+    expect(notes.assignNoteToUser).toHaveBeenCalledWith(10, 2, 1, 'USER');
+  });
+
+  it.each(['MOD', 'ADMIN'] as const)(
+    'forbids a MOD from assigning the %s role before looking up the target',
+    async (role) => {
+      notes.findNoteAccess.mockResolvedValue(accessWithCallerRole('MOD'));
+
+      await expect(noteService.assignNoteToUser('note-uuid', 'bob-uuid', 1, role)).rejects.toThrow(
+        new ForbiddenError(`Only the note's ADMINs can assign the ${role} role`),
+      );
+      expect(users.findIdByUuid).not.toHaveBeenCalled();
+      expect(notes.assignNoteToUser).not.toHaveBeenCalled();
+    },
+  );
+
+  it('forbids a USER on the note even when assigning the USER role', async () => {
+    notes.findNoteAccess.mockResolvedValue(accessWithCallerRole('USER'));
+
+    await expect(noteService.assignNoteToUser('note-uuid', 'bob-uuid', 1, 'USER')).rejects.toThrow(
+      new ForbiddenError('Only users with sufficient permissions can assign notes to other users'),
+    );
+    expect(notes.assignNoteToUser).not.toHaveBeenCalled();
   });
 });

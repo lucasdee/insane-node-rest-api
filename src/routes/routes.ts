@@ -72,6 +72,7 @@ const models: TsoaRoute.Models = {
         "properties": {
             "noteUuid": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid note UUID"},"pattern":{"value":"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$","errorMsg":"Please provide a valid note UUID"}}},
             "userUuid": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid user UUID"},"pattern":{"value":"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$","errorMsg":"Please provide a valid user UUID"}}},
+            "role": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["USER"]},{"dataType":"enum","enums":["MOD"]},{"dataType":"enum","enums":["ADMIN"]}]},
         },
         "additionalProperties": false,
     },

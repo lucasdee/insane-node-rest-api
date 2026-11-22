@@ -45,17 +45,22 @@ export class NoteService {
     noteUuid: string,
     userUuid: string,
     assignedById: number,
+    role: Role = Role.USER,
   ): Promise<NoteOnUser> {
     const note = await noteRepository.findNoteAccess(noteUuid, assignedById);
     if (!note) {
       throw new ForbiddenError('Note not found or you do not have access to it');
     }
 
+    // A note's ADMINs can share it with any role, its MODs only as USER.
     const callerRole = note.users[0]?.role;
     if (!callerRole || callerRole === Role.USER) {
       throw new ForbiddenError(
         'Only users with sufficient permissions can assign notes to other users',
       );
+    }
+    if (callerRole !== Role.ADMIN && role !== Role.USER) {
+      throw new ForbiddenError(`Only the note's ADMINs can assign the ${role} role`);
     }
 
     const userId = await userRepository.findIdByUuid(userUuid);
@@ -64,7 +69,9 @@ export class NoteService {
     }
 
     try {
-      return toNoteOnUser(await noteRepository.assignNoteToUser(note.id, userId, assignedById));
+      return toNoteOnUser(
+        await noteRepository.assignNoteToUser(note.id, userId, assignedById, role),
+      );
     } catch (err) {
       // The (noteId, userId) primary key rejects a second assignment. Relying on it
       // instead of checking first also covers two identical requests at once.

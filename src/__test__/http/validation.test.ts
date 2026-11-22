@@ -138,7 +138,10 @@ describe.each([
         { noteUuid: validAssign.noteUuid, userId: 2 },
         'body.userId',
       ],
-      ['an unknown property', { ...validAssign, role: 'ADMIN' }, 'body.role'],
+      ['an unknown role', { ...validAssign, role: 'OWNER' }, 'body.role'],
+      ['a lowercase role', { ...validAssign, role: 'admin' }, 'body.role'],
+      ['a non-string role', { ...validAssign, role: 2 }, 'body.role'],
+      ['an unknown property', { ...validAssign, assignedById: 1 }, 'body.assignedById'],
     ] as Case[],
   ],
 ])('POST %s', (path, auth, cases) => {
