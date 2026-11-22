@@ -191,7 +191,7 @@ The generated file will be available at `generated/api.ts`
 
 ## Testing
 
-The tests need no database and no `.env`: they run against an in-memory fake of Prisma, with settings from `vitest.config.ts`.
+The tests need no database and no `.env`: they run against an in-memory fake of Prisma, with settings from `vitest.config.mts`.
 
 Run tests in watch mode with:
 

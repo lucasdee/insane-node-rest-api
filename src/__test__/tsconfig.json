@@ -6,8 +6,10 @@
     "module": "preserve",
     "moduleResolution": "bundler",
     "noEmit": true,
-    "incremental": false
+    "incremental": false,
+    // The base rootDir is ./src, which would leave out vitest.config.mts.
+    "rootDir": "../.."
   },
-  "include": ["./**/*"],
+  "include": ["./**/*", "../../vitest.config.mts"],
   "exclude": []
 }

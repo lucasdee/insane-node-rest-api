@@ -20,7 +20,7 @@ jobs:
 
     # src/config/env.ts refuses to load without these, and prisma.config.ts loads it
     # during `prisma generate`. Placeholders only: nothing here connects to a database.
-    # The tests set their own values in vitest.config.ts.
+    # The tests set their own values in vitest.config.mts.
     env:
       PORT: '3000'
       CORS_ORIGIN: http://localhost:3000

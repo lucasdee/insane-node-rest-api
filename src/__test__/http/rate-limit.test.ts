@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterAll } from 'vitest';
 import request from 'supertest';
 import app from '../../app';
 
-// Rate limiting is off for the other test files (see vitest.config.ts). The limiters are
+// Rate limiting is off for the other test files (see vitest.config.mts). The limiters are
 // created when app.ts is imported, so the settings must be in place before that import:
 // vi.hoisted runs above the imports. With one trusted proxy hop, each test can act as
 // its own client via X-Forwarded-For.
