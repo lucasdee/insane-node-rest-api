@@ -1,0 +1,13 @@
+{
+  // The tests only ever run through Vitest, which loads them as ESM and resolves
+  // imports like a bundler, so they are checked that way instead of with nodenext.
+  "extends": "../../tsconfig.main.json",
+  "compilerOptions": {
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "incremental": false
+  },
+  "include": ["./**/*"],
+  "exclude": []
+}

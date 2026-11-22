@@ -2,7 +2,7 @@
   "compilerOptions": {
     "incremental": true,
     "target": "ESNext",
-    "module": "commonjs",
+    "module": "nodenext",
     "rootDir": "./src",
     "outDir": "./dist",
 
@@ -23,8 +23,7 @@
     "noFallthroughCasesInSwitch": true,
 
     /* Module Resolution Options */
-    "moduleResolution": "node",
-    "baseUrl": ".",
+    "moduleResolution": "node16",
     "esModuleInterop": true,
     "resolveJsonModule": true,
 
@@ -38,5 +37,6 @@
     "skipLibCheck": true
   },
   "include": ["src/**/*", "../vitest.config.ts"],
-  "exclude": ["node_modules", "dist"]
+  // The tests have their own config: src/__test__/tsconfig.json.
+  "exclude": ["node_modules", "dist", "src/__test__"]
 }
