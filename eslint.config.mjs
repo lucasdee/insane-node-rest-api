@@ -10,7 +10,7 @@ export default [
       'coverage',
       'generated',
       'src/generated',
-      'vitest.config.ts',
+      'vitest.config.mts',
       'prisma.config.ts',
     ],
   },

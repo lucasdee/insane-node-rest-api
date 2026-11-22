@@ -36,7 +36,7 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*", "../vitest.config.ts"],
+  "include": ["src/**/*"],
   // The tests have their own config: src/__test__/tsconfig.json.
   "exclude": ["node_modules", "dist", "src/__test__"]
 }
