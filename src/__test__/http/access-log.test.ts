@@ -32,9 +32,7 @@ vi.mock('../../config/db', () => ({ prisma: { $queryRaw: async () => [{ 1: 1 }] 
 
 const loadApp = async (settings: Record<string, string>) => {
   Object.entries(settings).forEach(([name, value]) => vi.stubEnv(name, value));
-  // Vitest loads app.ts as ESM, so `default` is the app. With module "nodenext" TypeScript
-  // types a dynamic import of a CommonJS file as { default: module.exports } instead.
-  return (await import('../../app.js')).default as unknown as Express;
+  return (await import('../../app')).default as Express;
 };
 
 let tempDir: string;

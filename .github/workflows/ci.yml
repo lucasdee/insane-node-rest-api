@@ -68,9 +68,9 @@ jobs:
       - name: Check formatting
         run: npm run format
 
-      # The build's compile leaves out the tests; this checks them too.
-      - name: Type check, including tests
-        run: npx tsc --noEmit -p tsconfig.main.json
+      # The build's compile leaves out the tests; they have their own config.
+      - name: Type check tests
+        run: npx tsc --noEmit -p src/__test__/tsconfig.json
 
       - name: Test
         run: npm run test:coverage

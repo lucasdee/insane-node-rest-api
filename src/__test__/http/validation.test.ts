@@ -7,7 +7,7 @@ import { resetFakeDb, seedUser } from '../helpers/fake-prisma';
 // Invalid requests fail before reaching the database; valid ones at the limits
 // go through to the in-memory fake.
 vi.mock('../../config/db', async () => ({
-  prisma: (await import('../helpers/fake-prisma.js')).fakePrisma,
+  prisma: (await import('../helpers/fake-prisma')).fakePrisma,
 }));
 
 const validRegister = { username: 'alice', password: 'secret123', email: 'alice@example.com' };
