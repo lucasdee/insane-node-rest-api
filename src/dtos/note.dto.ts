@@ -69,4 +69,11 @@ export class NoteOnUserCreateRequest {
    */
   @Example('9b2d7c1e-4f3a-4b6c-9d8e-7f6a5b4c3d2e')
   userUuid!: string;
+
+  /**
+   * The assignee's role on the note. Defaults to USER. Only the note's ADMINs can
+   * assign MOD or ADMIN.
+   */
+  @Example('USER')
+  role?: 'USER' | 'MOD' | 'ADMIN';
 }

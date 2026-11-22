@@ -36,13 +36,21 @@ export class NotesController extends Controller {
   @Post('assign')
   @Security('jwt')
   @SuccessResponse(201, 'Created')
-  @Response(403, 'Note not found or you do not have access to it')
+  @Response(
+    403,
+    'Note not found or you do not have access to it, or your role on the note does not allow this assignment',
+  )
   @Response(404, 'User not found')
   @Response(409, 'The user is already assigned to the note')
   public async assignNoteToUser(
     @Request() req: AuthenticatedRequest,
     @Body() body: NoteOnUserCreateRequest,
   ): Promise<NoteOnUser> {
-    return await noteService.assignNoteToUser(body.noteUuid, body.userUuid, req.user!.userId);
+    return await noteService.assignNoteToUser(
+      body.noteUuid,
+      body.userUuid,
+      req.user!.userId,
+      body.role,
+    );
   }
 }

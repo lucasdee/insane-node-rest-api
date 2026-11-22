@@ -19,16 +19,16 @@ const listNotes = (user: UserRow) =>
 const createNote = (user: UserRow, title = 'Shopping', content = 'Milk, eggs') =>
   request(app).post('/notes/create').set('Authorization', bearer(user.id)).send({ title, content });
 
-const assign = (by: UserRow, noteUuid: string, userUuid: string) =>
+type Role = 'USER' | 'MOD' | 'ADMIN';
+
+const assign = (by: UserRow, noteUuid: string, userUuid: string, role?: Role) =>
   request(app)
     .post('/notes/assign')
     .set('Authorization', bearer(by.id))
-    .send({ noteUuid, userUuid });
+    .send({ noteUuid, userUuid, role });
 
 /** Creates a note as `author` and returns its uuid. */
 const noteBy = async (author: UserRow): Promise<string> => (await createNote(author)).body.uuid;
-
-const internalNoteId = (uuid: string) => fakeDb.notes.find((n) => n.uuid === uuid)!.id;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -119,20 +119,52 @@ describe('POST /notes/assign', () => {
     ]);
   });
 
-  it('lets a MOD on the note share it', async () => {
+  it.each(['USER', 'MOD', 'ADMIN'] as const)(
+    'lets the note’s ADMIN assign the %s role',
+    async (role) => {
+      const noteUuid = await noteBy(alice);
+
+      const res = await assign(alice, noteUuid, bob.uuid, role);
+
+      expect(res.status).toBe(201);
+      expect(res.body.role).toBe(role);
+      expect(await listNotes(bob).then((r) => r.body[0].role)).toBe(role);
+    },
+  );
+
+  it('lets a user re-share a note shared with them as ADMIN', async () => {
     const noteUuid = await noteBy(alice);
-    fakeDb.notesOnUsers.push({
-      noteId: internalNoteId(noteUuid),
-      userId: bob.id,
-      assignedById: alice.id,
-      assignedAt: new Date(),
-      role: 'MOD',
-    });
+    await assign(alice, noteUuid, bob.uuid, 'ADMIN');
+
+    const res = await assign(bob, noteUuid, carol.uuid, 'MOD');
+
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ userUuid: carol.uuid, assignedByUuid: bob.uuid, role: 'MOD' });
+  });
+
+  it('lets a MOD on the note share it as USER', async () => {
+    const noteUuid = await noteBy(alice);
+    await assign(alice, noteUuid, bob.uuid, 'MOD');
 
     const res = await assign(bob, noteUuid, carol.uuid);
 
     expect(res.status).toBe(201);
+    expect(res.body.role).toBe('USER');
   });
+
+  it.each(['MOD', 'ADMIN'] as const)(
+    'forbids a MOD on the note from assigning the %s role',
+    async (role) => {
+      const noteUuid = await noteBy(alice);
+      await assign(alice, noteUuid, bob.uuid, 'MOD');
+
+      const res = await assign(bob, noteUuid, carol.uuid, role);
+
+      expect(res.status).toBe(403);
+      expect(res.body).toEqual({ message: `Only the note's ADMINs can assign the ${role} role` });
+      expect(await listNotes(carol).then((r) => r.body)).toEqual([]);
+    },
+  );
 
   it('forbids a USER on the note from sharing it', async () => {
     const noteUuid = await noteBy(alice);

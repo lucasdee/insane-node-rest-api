@@ -160,6 +160,16 @@
 						"type": "string",
 						"example": "9b2d7c1e-4f3a-4b6c-9d8e-7f6a5b4c3d2e",
 						"pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+					},
+					"role": {
+						"type": "string",
+						"enum": [
+							"USER",
+							"MOD",
+							"ADMIN"
+						],
+						"description": "The assignee's role on the note. Defaults to USER. Only the note's ADMINs can\nassign MOD or ADMIN.",
+						"example": "USER"
 					}
 				},
 				"required": [
@@ -382,7 +392,7 @@
 						}
 					},
 					"403": {
-						"description": "Note not found or you do not have access to it"
+						"description": "Note not found or you do not have access to it, or your role on the note does not allow this assignment"
 					},
 					"404": {
 						"description": "User not found"

@@ -85,12 +85,14 @@ export class NoteRepository {
     noteId: number,
     userId: number,
     assignedById: number,
+    role: Role,
   ): Promise<PublicNoteOnUser> {
     return prisma.noteOnUser.create({
       data: {
         noteId,
         userId,
         assignedById,
+        role,
       },
       select: publicNoteOnUserSelect,
     });
