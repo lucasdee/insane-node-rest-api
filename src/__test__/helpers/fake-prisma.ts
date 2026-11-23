@@ -38,7 +38,7 @@ export type RefreshTokenRow = {
   familyId: string;
 };
 
-export type NoteRow = {
+export type MemoRow = {
   id: number;
   uuid: string;
   title: string;
@@ -47,8 +47,8 @@ export type NoteRow = {
   createdAt: Date;
 };
 
-export type NoteOnUserRow = {
-  noteId: number;
+export type MemoOnUserRow = {
+  memoId: number;
   userId: number;
   assignedById: number;
   assignedAt: Date;
@@ -65,8 +65,8 @@ type RelationSelect = {
 export const fakeDb = {
   users: [] as UserRow[],
   refreshTokens: [] as RefreshTokenRow[],
-  notes: [] as NoteRow[],
-  notesOnUsers: [] as NoteOnUserRow[],
+  memos: [] as MemoRow[],
+  memosOnUsers: [] as MemoOnUserRow[],
 };
 
 let nextId = 1;
@@ -74,8 +74,8 @@ let nextId = 1;
 export const resetFakeDb = () => {
   fakeDb.users.length = 0;
   fakeDb.refreshTokens.length = 0;
-  fakeDb.notes.length = 0;
-  fakeDb.notesOnUsers.length = 0;
+  fakeDb.memos.length = 0;
+  fakeDb.memosOnUsers.length = 0;
   nextId = 1;
 };
 
@@ -105,7 +105,7 @@ const deleteWhere = <T extends object>(rows: T[], where: Where) => {
 
 const userExists = (id: number) => fakeDb.users.some((u) => u.id === id);
 
-type Model = 'user' | 'note' | 'noteOnUser';
+type Model = 'user' | 'memo' | 'memoOnUser';
 
 /** How each relation field resolves: the related model and its row(s). */
 const relations: Record<
@@ -113,28 +113,28 @@ const relations: Record<
   Record<string, { model: Model; resolve: (row: never) => object | object[] | undefined }>
 > = {
   user: {},
-  note: {
+  memo: {
     author: {
       model: 'user',
-      resolve: (n: NoteRow) => fakeDb.users.find((u) => u.id === n.authorId),
+      resolve: (n: MemoRow) => fakeDb.users.find((u) => u.id === n.authorId),
     },
     users: {
-      model: 'noteOnUser',
-      resolve: (n: NoteRow) => fakeDb.notesOnUsers.filter((l) => l.noteId === n.id),
+      model: 'memoOnUser',
+      resolve: (n: MemoRow) => fakeDb.memosOnUsers.filter((l) => l.memoId === n.id),
     },
   },
-  noteOnUser: {
-    note: {
-      model: 'note',
-      resolve: (l: NoteOnUserRow) => fakeDb.notes.find((n) => n.id === l.noteId),
+  memoOnUser: {
+    memo: {
+      model: 'memo',
+      resolve: (l: MemoOnUserRow) => fakeDb.memos.find((n) => n.id === l.memoId),
     },
     user: {
       model: 'user',
-      resolve: (l: NoteOnUserRow) => fakeDb.users.find((u) => u.id === l.userId),
+      resolve: (l: MemoOnUserRow) => fakeDb.users.find((u) => u.id === l.userId),
     },
     assignedBy: {
       model: 'user',
-      resolve: (l: NoteOnUserRow) => fakeDb.users.find((u) => u.id === l.assignedById),
+      resolve: (l: MemoOnUserRow) => fakeDb.users.find((u) => u.id === l.assignedById),
     },
   },
 };
@@ -219,56 +219,56 @@ export const fakePrisma = {
     deleteMany: async ({ where }: { where: Where }) => deleteWhere(fakeDb.refreshTokens, where),
   },
 
-  note: {
+  memo: {
     create: async ({
       data,
       select,
     }: {
-      data: Pick<NoteRow, 'title' | 'content' | 'authorId'> & {
-        users: { create: Pick<NoteOnUserRow, 'userId' | 'assignedById' | 'role'> };
+      data: Pick<MemoRow, 'title' | 'content' | 'authorId'> & {
+        users: { create: Pick<MemoOnUserRow, 'userId' | 'assignedById' | 'role'> };
       };
       select?: RelationSelect;
     }) => {
       if (!userExists(data.authorId)) {
-        throw knownError('P2003', 'Foreign key constraint violated on notes_authorId_fkey');
+        throw knownError('P2003', 'Foreign key constraint violated on memos_authorId_fkey');
       }
       const { users, ...fields } = data;
-      const note: NoteRow = { id: nextId++, uuid: randomUUID(), createdAt: new Date(), ...fields };
-      fakeDb.notes.push(note);
-      fakeDb.notesOnUsers.push({ noteId: note.id, assignedAt: new Date(), ...users.create });
-      return selectRow('note', note, select);
+      const memo: MemoRow = { id: nextId++, uuid: randomUUID(), createdAt: new Date(), ...fields };
+      fakeDb.memos.push(memo);
+      fakeDb.memosOnUsers.push({ memoId: memo.id, assignedAt: new Date(), ...users.create });
+      return selectRow('memo', memo, select);
     },
     findUnique: async ({ where, select }: { where: Where; select?: RelationSelect }) => {
-      const note = fakeDb.notes.find((n) => matches(n, where));
-      return note ? selectRow('note', note, select) : null;
+      const memo = fakeDb.memos.find((n) => matches(n, where));
+      return memo ? selectRow('memo', memo, select) : null;
     },
   },
 
-  noteOnUser: {
+  memoOnUser: {
     findMany: async ({ where, select }: { where: Where; select?: RelationSelect }) =>
-      fakeDb.notesOnUsers
+      fakeDb.memosOnUsers
         .filter((link) => matches(link, where))
-        .map((link) => selectRow('noteOnUser', link, select)),
+        .map((link) => selectRow('memoOnUser', link, select)),
     create: async ({
       data,
       select,
     }: {
-      data: Pick<NoteOnUserRow, 'noteId' | 'userId' | 'assignedById'> & { role?: Role };
+      data: Pick<MemoOnUserRow, 'memoId' | 'userId' | 'assignedById'> & { role?: Role };
       select?: RelationSelect;
     }) => {
-      if (fakeDb.notesOnUsers.some((l) => l.noteId === data.noteId && l.userId === data.userId)) {
-        throw knownError('P2002', 'Unique constraint failed on notes_on_users PRIMARY');
+      if (fakeDb.memosOnUsers.some((l) => l.memoId === data.memoId && l.userId === data.userId)) {
+        throw knownError('P2002', 'Unique constraint failed on memos_on_users PRIMARY');
       }
       if (
-        !fakeDb.notes.some((n) => n.id === data.noteId) ||
+        !fakeDb.memos.some((n) => n.id === data.memoId) ||
         !userExists(data.userId) ||
         !userExists(data.assignedById)
       ) {
-        throw knownError('P2003', 'Foreign key constraint violated on notes_on_users_fkey');
+        throw knownError('P2003', 'Foreign key constraint violated on memos_on_users_fkey');
       }
-      const row: NoteOnUserRow = { role: 'USER', assignedAt: new Date(), ...data };
-      fakeDb.notesOnUsers.push(row);
-      return selectRow('noteOnUser', row, select);
+      const row: MemoOnUserRow = { role: 'USER', assignedAt: new Date(), ...data };
+      fakeDb.memosOnUsers.push(row);
+      return selectRow('memoOnUser', row, select);
     },
   },
 };

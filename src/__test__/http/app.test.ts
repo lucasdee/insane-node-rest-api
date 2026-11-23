@@ -34,7 +34,7 @@ describe('CORS', () => {
 
   it('answers preflight requests', async () => {
     const res = await request(app)
-      .options('/notes/create')
+      .options('/memos/create')
       .set('Origin', ALLOWED_ORIGIN)
       .set('Access-Control-Request-Method', 'POST')
       .set('Access-Control-Request-Headers', 'Authorization, Content-Type');

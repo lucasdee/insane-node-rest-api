@@ -1,13 +1,13 @@
 import { Example } from '@tsoa/runtime';
 
-export class Note {
+export class Memo {
   @Example('123e4567-e89b-12d3-a456-426614174000')
   uuid!: string;
 
-  @Example('My first note')
+  @Example('My first memo')
   title!: string;
 
-  @Example('This is the content of my first note.')
+  @Example('This is the content of my first memo.')
   content!: string;
 
   @Example('5f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b')
@@ -17,9 +17,9 @@ export class Note {
   createdAt!: Date;
 }
 
-export class NoteOnUser {
+export class MemoOnUser {
   @Example('123e4567-e89b-12d3-a456-426614174000')
-  noteUuid!: string;
+  memoUuid!: string;
 
   @Example('9b2d7c1e-4f3a-4b6c-9d8e-7f6a5b4c3d2e')
   userUuid!: string;
@@ -33,17 +33,17 @@ export class NoteOnUser {
   @Example('USER')
   role!: 'USER' | 'MOD' | 'ADMIN';
 
-  @Example(Note)
-  note?: Note;
+  @Example(Memo)
+  memo?: Memo;
 }
 
-export class NoteCreateRequest {
+export class MemoCreateRequest {
   /**
    * @isString Please provide a valid title
    * @minLength 3 Please provide a title that is at least 3 characters long
    * @maxLength 128 Please provide a title that is at most 128 characters long
    */
-  @Example('My first note')
+  @Example('My first memo')
   title!: string;
 
   /**
@@ -51,17 +51,17 @@ export class NoteCreateRequest {
    * @minLength 3 Please provide content that is at least 3 characters long
    * @maxLength 10000 Please provide content that is at most 10000 characters long
    */
-  @Example('This is the content of my first note.')
+  @Example('This is the content of my first memo.')
   content!: string;
 }
 
-export class NoteOnUserCreateRequest {
+export class MemoOnUserCreateRequest {
   /**
-   * @isString Please provide a valid note UUID
-   * @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ Please provide a valid note UUID
+   * @isString Please provide a valid memo UUID
+   * @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ Please provide a valid memo UUID
    */
   @Example('123e4567-e89b-12d3-a456-426614174000')
-  noteUuid!: string;
+  memoUuid!: string;
 
   /**
    * @isString Please provide a valid user UUID
@@ -71,7 +71,7 @@ export class NoteOnUserCreateRequest {
   userUuid!: string;
 
   /**
-   * The assignee's role on the note. Defaults to USER. Only the note's ADMINs can
+   * The assignee's role on the memo. Defaults to USER. Only the memo's ADMINs can
    * assign MOD or ADMIN.
    */
   @Example('USER')
