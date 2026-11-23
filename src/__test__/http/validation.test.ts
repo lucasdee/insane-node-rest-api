@@ -12,9 +12,9 @@ vi.mock('../../config/db', async () => ({
 
 const validRegister = { username: 'alice', password: 'secret123', email: 'alice@example.com' };
 const validLogin = { username: 'alice', password: 'secret123' };
-const validNote = { title: 'Title', content: 'Content' };
+const validMemo = { title: 'Title', content: 'Content' };
 const validAssign = {
-  noteUuid: '123e4567-e89b-12d3-a456-426614174000',
+  memoUuid: '123e4567-e89b-12d3-a456-426614174000',
   userUuid: '9b2d7c1e-4f3a-4b6c-9d8e-7f6a5b4c3d2e',
 };
 
@@ -98,44 +98,44 @@ describe.each([
     ] as Case[],
   ],
   [
-    '/notes/create',
+    '/memos/create',
     true,
     [
-      ['a title shorter than 3 characters', { ...validNote, title: 'ab' }, 'body.title'],
+      ['a title shorter than 3 characters', { ...validMemo, title: 'ab' }, 'body.title'],
       [
         'a title longer than 128 characters',
-        { ...validNote, title: 'a'.repeat(129) },
+        { ...validMemo, title: 'a'.repeat(129) },
         'body.title',
       ],
-      ['content shorter than 3 characters', { ...validNote, content: 'ab' }, 'body.content'],
+      ['content shorter than 3 characters', { ...validMemo, content: 'ab' }, 'body.content'],
       [
         'content longer than 10000 characters',
-        { ...validNote, content: 'a'.repeat(10_001) },
+        { ...validMemo, content: 'a'.repeat(10_001) },
         'body.content',
       ],
       ['a missing title', { content: 'Content' }, 'body.title'],
-      ['an unknown property', { ...validNote, authorId: 99 }, 'body.authorId'],
+      ['an unknown property', { ...validMemo, authorId: 99 }, 'body.authorId'],
     ] as Case[],
   ],
   [
-    '/notes/assign',
+    '/memos/assign',
     true,
     [
       [
-        'a noteUuid that is not a uuid',
-        { ...validAssign, noteUuid: 'not-a-uuid' },
-        'body.noteUuid',
+        'a memoUuid that is not a uuid',
+        { ...validAssign, memoUuid: 'not-a-uuid' },
+        'body.memoUuid',
       ],
-      ['a numeric noteUuid', { ...validAssign, noteUuid: 1 }, 'body.noteUuid'],
+      ['a numeric memoUuid', { ...validAssign, memoUuid: 1 }, 'body.memoUuid'],
       [
         'a userUuid with trailing characters',
         { ...validAssign, userUuid: `${validAssign.userUuid}x` },
         'body.userUuid',
       ],
-      ['a missing userUuid', { noteUuid: validAssign.noteUuid }, 'body.userUuid'],
+      ['a missing userUuid', { memoUuid: validAssign.memoUuid }, 'body.userUuid'],
       [
         'the old numeric userId field',
-        { noteUuid: validAssign.noteUuid, userId: 2 },
+        { memoUuid: validAssign.memoUuid, userId: 2 },
         'body.userId',
       ],
       ['an unknown role', { ...validAssign, role: 'OWNER' }, 'body.role'],
@@ -156,7 +156,7 @@ describe.each([
 
 describe('maximum lengths', () => {
   it('explains which limit was exceeded', async () => {
-    const res = await post('/notes/create', { ...validNote, title: 'a'.repeat(129) }, true);
+    const res = await post('/memos/create', { ...validMemo, title: 'a'.repeat(129) }, true);
 
     expect(res.body.details['body.title'].message).toBe(
       'Please provide a title that is at most 128 characters long',
@@ -210,11 +210,11 @@ describe('maximum lengths', () => {
     expect(loggedIn.status).toBe(200);
   });
 
-  it('accepts a note with title and content at their limits', async () => {
+  it('accepts a memo with title and content at their limits', async () => {
     const author = seedUser();
 
     const res = await request(app)
-      .post('/notes/create')
+      .post('/memos/create')
       .set('Authorization', bearer(author.id))
       .send({ title: 't'.repeat(128), content: 'c'.repeat(10_000) });
 

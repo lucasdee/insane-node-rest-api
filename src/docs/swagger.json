@@ -51,7 +51,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"Note": {
+			"Memo": {
 				"properties": {
 					"uuid": {
 						"type": "string",
@@ -59,11 +59,11 @@
 					},
 					"title": {
 						"type": "string",
-						"example": "My first note"
+						"example": "My first memo"
 					},
 					"content": {
 						"type": "string",
-						"example": "This is the content of my first note."
+						"example": "This is the content of my first memo."
 					},
 					"authorUuid": {
 						"type": "string",
@@ -85,9 +85,9 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"NoteOnUser": {
+			"MemoOnUser": {
 				"properties": {
-					"noteUuid": {
+					"memoUuid": {
 						"type": "string",
 						"example": "123e4567-e89b-12d3-a456-426614174000"
 					},
@@ -113,12 +113,12 @@
 						],
 						"example": "USER"
 					},
-					"note": {
-						"$ref": "#/components/schemas/Note"
+					"memo": {
+						"$ref": "#/components/schemas/Memo"
 					}
 				},
 				"required": [
-					"noteUuid",
+					"memoUuid",
 					"userUuid",
 					"assignedByUuid",
 					"assignedAt",
@@ -127,17 +127,17 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"NoteCreateRequest": {
+			"MemoCreateRequest": {
 				"properties": {
 					"title": {
 						"type": "string",
-						"example": "My first note",
+						"example": "My first memo",
 						"minLength": 3,
 						"maxLength": 128
 					},
 					"content": {
 						"type": "string",
-						"example": "This is the content of my first note.",
+						"example": "This is the content of my first memo.",
 						"minLength": 3,
 						"maxLength": 10000
 					}
@@ -149,9 +149,9 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"NoteOnUserCreateRequest": {
+			"MemoOnUserCreateRequest": {
 				"properties": {
-					"noteUuid": {
+					"memoUuid": {
 						"type": "string",
 						"example": "123e4567-e89b-12d3-a456-426614174000",
 						"pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
@@ -168,12 +168,12 @@
 							"MOD",
 							"ADMIN"
 						],
-						"description": "The assignee's role on the note. Defaults to USER. Only the note's ADMINs can\nassign MOD or ADMIN.",
+						"description": "The assignee's role on the memo. Defaults to USER. Only the memo's ADMINs can\nassign MOD or ADMIN.",
 						"example": "USER"
 					}
 				},
 				"required": [
-					"noteUuid",
+					"memoUuid",
 					"userUuid"
 				],
 				"type": "object",
@@ -312,9 +312,9 @@
 				"parameters": []
 			}
 		},
-		"/notes": {
+		"/memos": {
 			"get": {
-				"operationId": "ListMyNotes",
+				"operationId": "ListMyMemos",
 				"responses": {
 					"200": {
 						"description": "Ok",
@@ -322,7 +322,7 @@
 							"application/json": {
 								"schema": {
 									"items": {
-										"$ref": "#/components/schemas/NoteOnUser"
+										"$ref": "#/components/schemas/MemoOnUser"
 									},
 									"type": "array"
 								}
@@ -331,7 +331,7 @@
 					}
 				},
 				"tags": [
-					"Notes"
+					"Memos"
 				],
 				"security": [
 					{
@@ -341,23 +341,23 @@
 				"parameters": []
 			}
 		},
-		"/notes/create": {
+		"/memos/create": {
 			"post": {
-				"operationId": "CreateNote",
+				"operationId": "CreateMemo",
 				"responses": {
 					"201": {
 						"description": "Created",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/Note"
+									"$ref": "#/components/schemas/Memo"
 								}
 							}
 						}
 					}
 				},
 				"tags": [
-					"Notes"
+					"Memos"
 				],
 				"security": [
 					{
@@ -370,39 +370,39 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/NoteCreateRequest"
+								"$ref": "#/components/schemas/MemoCreateRequest"
 							}
 						}
 					}
 				}
 			}
 		},
-		"/notes/assign": {
+		"/memos/assign": {
 			"post": {
-				"operationId": "AssignNoteToUser",
+				"operationId": "AssignMemoToUser",
 				"responses": {
 					"201": {
 						"description": "Created",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/NoteOnUser"
+									"$ref": "#/components/schemas/MemoOnUser"
 								}
 							}
 						}
 					},
 					"403": {
-						"description": "Note not found or you do not have access to it, or your role on the note does not allow this assignment"
+						"description": "Memo not found or you do not have access to it, or your role on the memo does not allow this assignment"
 					},
 					"404": {
 						"description": "User not found"
 					},
 					"409": {
-						"description": "The user is already assigned to the note"
+						"description": "The user is already assigned to the memo"
 					}
 				},
 				"tags": [
-					"Notes"
+					"Memos"
 				],
 				"security": [
 					{
@@ -415,7 +415,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/NoteOnUserCreateRequest"
+								"$ref": "#/components/schemas/MemoOnUserCreateRequest"
 							}
 						}
 					}

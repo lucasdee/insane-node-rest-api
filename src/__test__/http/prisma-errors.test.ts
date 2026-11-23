@@ -8,8 +8,8 @@ import { Prisma } from '../../generated/prisma/client';
 const { prisma } = vi.hoisted(() => ({
   prisma: {
     user: { findUnique: vi.fn(), create: vi.fn() },
-    note: { findUnique: vi.fn() },
-    noteOnUser: { create: vi.fn() },
+    memo: { findUnique: vi.fn() },
+    memoOnUser: { create: vi.fn() },
   },
 }));
 
@@ -55,31 +55,31 @@ describe('Prisma errors are not leaked to clients', () => {
     expectNoInternals(res.body);
   });
 
-  describe('POST /notes/assign', () => {
+  describe('POST /memos/assign', () => {
     const assign = () =>
       request(app)
-        .post('/notes/assign')
+        .post('/memos/assign')
         .set('Authorization', `Bearer ${accessTokenFor(1)}`)
-        .send({ noteUuid: randomUUID(), userUuid: randomUUID() });
+        .send({ memoUuid: randomUUID(), userUuid: randomUUID() });
 
     beforeEach(() => {
-      prisma.note.findUnique.mockResolvedValue({ id: 1, users: [{ role: 'ADMIN' }] });
+      prisma.memo.findUnique.mockResolvedValue({ id: 1, users: [{ role: 'ADMIN' }] });
       prisma.user.findUnique.mockResolvedValue({ id: 2 });
     });
 
-    it('returns 409 when the note is already assigned to the user', async () => {
-      prisma.noteOnUser.create.mockRejectedValue(prismaError('P2002', 'PRIMARY'));
+    it('returns 409 when the memo is already assigned to the user', async () => {
+      prisma.memoOnUser.create.mockRejectedValue(prismaError('P2002', 'PRIMARY'));
 
       const res = await assign();
 
       expect(res.status).toBe(409);
-      expect(res.body).toEqual({ message: 'The user is already assigned to the note' });
+      expect(res.body).toEqual({ message: 'The user is already assigned to the memo' });
       expectNoInternals(res.body);
     });
 
     it('returns 400 when the target user is deleted before the assignment is stored', async () => {
-      prisma.noteOnUser.create.mockRejectedValue(
-        prismaError('P2003', 'notes_on_users_userId_fkey'),
+      prisma.memoOnUser.create.mockRejectedValue(
+        prismaError('P2003', 'memos_on_users_userId_fkey'),
       );
 
       const res = await assign();
@@ -90,7 +90,7 @@ describe('Prisma errors are not leaked to clients', () => {
     });
 
     it('returns 500 with a generic message for unexpected database errors', async () => {
-      prisma.noteOnUser.create.mockRejectedValue(new Error('connect ECONNREFUSED 10.0.0.5:3306'));
+      prisma.memoOnUser.create.mockRejectedValue(new Error('connect ECONNREFUSED 10.0.0.5:3306'));
 
       const res = await assign();
 
