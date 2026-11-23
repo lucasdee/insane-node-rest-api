@@ -13,11 +13,21 @@ let alice: UserRow;
 let bob: UserRow;
 let carol: UserRow;
 
-const listMemos = (user: UserRow) =>
-  request(app).get('/memos').set('Authorization', bearer(user.id));
+const listMemos = (user: UserRow, query = '') =>
+  request(app).get(`/memos${query}`).set('Authorization', bearer(user.id));
 
-const createMemo = (user: UserRow, title = 'Shopping', content = 'Milk, eggs') =>
-  request(app).post('/memos/create').set('Authorization', bearer(user.id)).send({ title, content });
+const createMemo = (user: UserRow, title = 'Shopping', content = 'Milk, eggs', tags?: string[]) =>
+  request(app)
+    .post('/memos/create')
+    .set('Authorization', bearer(user.id))
+    .send({ title, content, tags });
+
+const putTags = (user: UserRow, memoUuid: string, tags: string[]) =>
+  request(app).put(`/memos/${memoUuid}/tags`).set('Authorization', bearer(user.id)).send({ tags });
+
+/** The titles of the user's memos matching `query`, sorted. */
+const titles = async (user: UserRow, query: string) =>
+  (await listMemos(user, query)).body.map((l: { memo: { title: string } }) => l.memo.title).sort();
 
 type Role = 'USER' | 'MOD' | 'ADMIN';
 
@@ -44,8 +54,9 @@ describe('authentication', () => {
     ['GET', '/memos'],
     ['POST', '/memos/create'],
     ['POST', '/memos/assign'],
+    ['PUT', `/memos/${randomUUID()}/tags`],
   ])('%s %s returns 401 without a token', async (method, path) => {
-    const res = await request(app)[method === 'GET' ? 'get' : 'post'](path);
+    const res = await request(app)[method.toLowerCase() as 'get' | 'post' | 'put'](path);
 
     expect(res.status).toBe(401);
   });
@@ -92,6 +103,146 @@ describe('POST /memos/create', () => {
         memo: expect.objectContaining({ title: 'Shopping' }),
       }),
     ]);
+  });
+
+  it('returns no tags when none are given', async () => {
+    const res = await createMemo(alice);
+
+    expect(res.body.tags).toEqual([]);
+  });
+
+  it('stores the tags lowercased, de-duplicated and sorted', async () => {
+    const res = await createMemo(alice, 'Shopping', 'Milk', ['Home', 'groceries', 'HOME']);
+
+    expect(res.status).toBe(201);
+    expect(res.body.tags).toEqual(['groceries', 'home']);
+    expect(fakeDb.tags.map((t) => t.name).sort()).toEqual(['groceries', 'home']);
+  });
+
+  it('reuses existing tags across memos', async () => {
+    await createMemo(alice, 'Memo A', 'Content', ['home']);
+    await createMemo(bob, 'Memo B', 'Content', ['home']);
+
+    expect(fakeDb.tags).toHaveLength(1);
+    expect(fakeDb.memosOnTags).toHaveLength(2);
+  });
+});
+
+describe('GET /memos filtered by tags', () => {
+  beforeEach(async () => {
+    await createMemo(alice, 'Groceries', 'Content', ['home', 'shopping']);
+    await createMemo(alice, 'Chores', 'Content', ['home']);
+    await createMemo(alice, 'Report', 'Content', ['work']);
+    await createMemo(alice, 'Untagged', 'Content');
+  });
+
+  it('filters by a single tag', async () => {
+    expect(await titles(alice, '?tags=home')).toEqual(['Chores', 'Groceries']);
+  });
+
+  it('matches tags regardless of case', async () => {
+    expect(await titles(alice, '?tags=HOME')).toEqual(['Chores', 'Groceries']);
+  });
+
+  it('with several tags, requires all of them by default', async () => {
+    expect(await titles(alice, '?tags=home&tags=shopping')).toEqual(['Groceries']);
+  });
+
+  it('with match=all, requires all of the tags', async () => {
+    expect(await titles(alice, '?tags=home&tags=work&match=all')).toEqual([]);
+  });
+
+  it('with match=any, requires at least one of the tags', async () => {
+    expect(await titles(alice, '?tags=shopping&tags=work&match=any')).toEqual([
+      'Groceries',
+      'Report',
+    ]);
+  });
+
+  it('returns nothing for a tag no memo carries', async () => {
+    expect(await titles(alice, '?tags=unknown')).toEqual([]);
+  });
+
+  it('returns every memo without a tag filter', async () => {
+    expect(await titles(alice, '?match=any')).toHaveLength(4);
+  });
+
+  it('never returns memos the caller is not assigned to', async () => {
+    await createMemo(bob, 'Bob home', 'Content', ['home']);
+
+    expect(await titles(alice, '?tags=home')).toEqual(['Chores', 'Groceries']);
+    expect(await titles(bob, '?tags=home')).toEqual(['Bob home']);
+  });
+
+  it('includes memos shared with the caller, with their tags', async () => {
+    const [groceries] = (await listMemos(alice, '?tags=shopping')).body;
+    await assign(alice, groceries.memoUuid, bob.uuid);
+
+    const res = await listMemos(bob, '?tags=shopping');
+
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].memo.tags).toEqual(['home', 'shopping']);
+  });
+});
+
+describe('PUT /memos/{memoUuid}/tags', () => {
+  it.each(['ADMIN', 'MOD'] as const)('lets a %s replace the memo’s tags', async (role) => {
+    const created = await createMemo(alice, 'Memo', 'Content', ['old']);
+    const memoUuid = created.body.uuid;
+    await assign(alice, memoUuid, bob.uuid, role);
+
+    const res = await putTags(bob, memoUuid, ['New', 'other']);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ uuid: memoUuid, tags: ['new', 'other'] });
+    expect(await titles(alice, '?tags=new')).toEqual(['Memo']);
+    expect(await titles(alice, '?tags=old')).toEqual([]);
+  });
+
+  it('clears the tags when given an empty list', async () => {
+    const memoUuid = (await createMemo(alice, 'Memo', 'Content', ['home'])).body.uuid;
+
+    const res = await putTags(alice, memoUuid, []);
+
+    expect(res.status).toBe(200);
+    expect(res.body.tags).toEqual([]);
+    expect(fakeDb.memosOnTags).toHaveLength(0);
+  });
+
+  it('leaves other memos’ tags alone', async () => {
+    const memoUuid = (await createMemo(alice, 'Memo A', 'Content', ['home'])).body.uuid;
+    await createMemo(alice, 'Memo B', 'Content', ['home']);
+
+    await putTags(alice, memoUuid, ['work']);
+
+    expect(await titles(alice, '?tags=home')).toEqual(['Memo B']);
+  });
+
+  it('forbids a USER on the memo from changing its tags', async () => {
+    const memoUuid = (await createMemo(alice, 'Memo', 'Content', ['home'])).body.uuid;
+    await assign(alice, memoUuid, bob.uuid);
+
+    const res = await putTags(bob, memoUuid, ['work']);
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ message: "Only the memo's ADMINs and MODs can change its tags" });
+    expect(await titles(alice, '?tags=home')).toEqual(['Memo']);
+  });
+
+  it('forbids changing the tags of a memo the caller has no access to', async () => {
+    const memoUuid = await memoBy(alice);
+
+    const res = await putTags(bob, memoUuid, ['work']);
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ message: 'Memo not found or you do not have access to it' });
+  });
+
+  it('returns 403 for a memo that does not exist, without revealing that', async () => {
+    const res = await putTags(alice, randomUUID(), ['work']);
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ message: 'Memo not found or you do not have access to it' });
   });
 });
 
@@ -222,7 +373,7 @@ describe('POST /memos/assign', () => {
 });
 
 describe('memo data exposure', () => {
-  const MEMO_FIELDS = ['authorUuid', 'content', 'createdAt', 'title', 'uuid'];
+  const MEMO_FIELDS = ['authorUuid', 'content', 'createdAt', 'tags', 'title', 'uuid'];
   const MEMO_ON_USER_FIELDS = ['assignedAt', 'assignedByUuid', 'memoUuid', 'role', 'userUuid'];
 
   /** Fails if any numeric value, such as an internal id, appears anywhere in the body. */
@@ -234,7 +385,7 @@ describe('memo data exposure', () => {
   };
 
   it('POST /memos/create returns only public memo fields', async () => {
-    const res = await createMemo(alice);
+    const res = await createMemo(alice, 'Shopping', 'Milk', ['home']);
 
     expect(Object.keys(res.body).sort()).toEqual(MEMO_FIELDS);
     expectNoNumbers(res.body);
@@ -247,8 +398,15 @@ describe('memo data exposure', () => {
     expectNoNumbers(res.body);
   });
 
+  it('PUT /memos/{memoUuid}/tags returns only public memo fields', async () => {
+    const res = await putTags(alice, await memoBy(alice), ['home']);
+
+    expect(Object.keys(res.body).sort()).toEqual(MEMO_FIELDS);
+    expectNoNumbers(res.body);
+  });
+
   it('GET /memos returns only public assignment and memo fields', async () => {
-    await createMemo(alice);
+    await createMemo(alice, 'Shopping', 'Milk', ['home']);
 
     const res = await listMemos(alice);
 

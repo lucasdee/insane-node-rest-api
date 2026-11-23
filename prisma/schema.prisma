@@ -59,6 +59,7 @@ model Memo {
   authorId  Int       @db.UnsignedInt
   createdAt DateTime  @default(now())
   users     MemoOnUser[]
+  tags      MemoOnTag[]
 }
 
 model MemoOnUser {
@@ -72,4 +73,23 @@ model MemoOnUser {
   assignedById  Int     @db.UnsignedInt
   role          Role     @default(USER)
   @@id([memoId, userId])
+}
+
+model Tag {
+  @@map ("tags")
+  id    Int         @id @default(autoincrement()) @db.UnsignedInt
+  // Stored lowercased by the service, so a tag is unique regardless of case.
+  name  String      @unique @db.VarChar(32)
+  memos MemoOnTag[]
+}
+
+model MemoOnTag {
+  @@map ("memos_on_tags")
+  memo   Memo @relation(fields: [memoId], references: [id], onDelete: Cascade)
+  memoId Int  @db.UnsignedInt
+  tag    Tag  @relation(fields: [tagId], references: [id])
+  tagId  Int  @db.UnsignedInt
+  @@id([memoId, tagId])
+  // Finds a tag's memos when filtering by tag; the primary key covers memo -> tags.
+  @@index([tagId])
 }

@@ -8,8 +8,9 @@ import {
 
 const { prisma } = vi.hoisted(() => ({
   prisma: {
-    memo: { create: vi.fn(), findUnique: vi.fn() },
+    memo: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     memoOnUser: { create: vi.fn(), findMany: vi.fn() },
+    tag: { createMany: vi.fn(), findMany: vi.fn() },
   },
 }));
 
@@ -27,6 +28,7 @@ describe('public memo selects', () => {
       content: true,
       createdAt: true,
       author: { select: { uuid: true } },
+      tags: { select: { tag: { select: { name: true } } } },
     });
     expect(publicMemoOnUserSelect).toEqual({
       role: true,
@@ -54,6 +56,59 @@ describe('MemoRepository', () => {
     });
   });
 
+  it('listUserMemos without tags does not filter by tag', async () => {
+    prisma.memoOnUser.findMany.mockResolvedValue([]);
+
+    await memoRepository.listUserMemos(1, { tags: [], match: 'any' });
+
+    expect(prisma.memoOnUser.findMany).toHaveBeenCalledWith({
+      where: { userId: 1 },
+      select: publicMemoOnUserWithMemoSelect,
+    });
+  });
+
+  it('listUserMemos with match=all requires every tag on the memo', async () => {
+    prisma.memoOnUser.findMany.mockResolvedValue([]);
+
+    await memoRepository.listUserMemos(1, { tags: ['a', 'b'], match: 'all' });
+
+    expect(prisma.memoOnUser.findMany).toHaveBeenCalledWith({
+      where: {
+        userId: 1,
+        memo: {
+          AND: [
+            { tags: { some: { tag: { name: 'a' } } } },
+            { tags: { some: { tag: { name: 'b' } } } },
+          ],
+        },
+      },
+      select: publicMemoOnUserWithMemoSelect,
+    });
+  });
+
+  it('listUserMemos with match=any requires at least one of the tags', async () => {
+    prisma.memoOnUser.findMany.mockResolvedValue([]);
+
+    await memoRepository.listUserMemos(1, { tags: ['a', 'b'], match: 'any' });
+
+    expect(prisma.memoOnUser.findMany).toHaveBeenCalledWith({
+      where: { userId: 1, memo: { tags: { some: { tag: { name: { in: ['a', 'b'] } } } } } },
+      select: publicMemoOnUserWithMemoSelect,
+    });
+  });
+
+  it('listUserTags counts only the memos the user is assigned to', async () => {
+    prisma.tag.findMany.mockResolvedValue([]);
+
+    await memoRepository.listUserTags(1);
+
+    const onUsersMemos = { memo: { users: { some: { userId: 1 } } } };
+    expect(prisma.tag.findMany).toHaveBeenCalledWith({
+      where: { memos: { some: onUsersMemos } },
+      select: { name: true, _count: { select: { memos: { where: onUsersMemos } } } },
+    });
+  });
+
   it('findMemoAccess looks the memo up by uuid with only the given user’s role', async () => {
     const access = { id: 10, users: [{ role: 'ADMIN' }] };
     prisma.memo.findUnique.mockResolvedValue(access);
@@ -76,7 +131,51 @@ describe('MemoRepository', () => {
         content: 'Content',
         authorId: 1,
         users: { create: { userId: 1, assignedById: 1, role: 'ADMIN' } },
+        tags: { create: [] },
       },
+      select: publicMemoSelect,
+    });
+    expect(prisma.tag.createMany).not.toHaveBeenCalled();
+  });
+
+  it('createMemo creates missing tags, then links the memo to them by name', async () => {
+    prisma.memo.create.mockResolvedValue({ uuid: 'n-uuid' });
+
+    await memoRepository.createMemo('Title', 'Content', 1, ['home', 'work']);
+
+    expect(prisma.tag.createMany).toHaveBeenCalledWith({
+      data: [{ name: 'home' }, { name: 'work' }],
+      skipDuplicates: true,
+    });
+    expect(prisma.memo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          tags: {
+            create: [
+              { tag: { connect: { name: 'home' } } },
+              { tag: { connect: { name: 'work' } } },
+            ],
+          },
+        }),
+      }),
+    );
+    expect(prisma.tag.createMany.mock.invocationCallOrder[0]).toBeLessThan(
+      prisma.memo.create.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('replaceMemoTags removes all current tags and links the new ones', async () => {
+    prisma.memo.update.mockResolvedValue({ uuid: 'n-uuid' });
+
+    await memoRepository.replaceMemoTags(10, ['home']);
+
+    expect(prisma.tag.createMany).toHaveBeenCalledWith({
+      data: [{ name: 'home' }],
+      skipDuplicates: true,
+    });
+    expect(prisma.memo.update).toHaveBeenCalledWith({
+      where: { id: 10 },
+      data: { tags: { deleteMany: {}, create: [{ tag: { connect: { name: 'home' } } }] } },
       select: publicMemoSelect,
     });
   });
