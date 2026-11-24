@@ -95,14 +95,16 @@ export class MemoService {
     assignedById: number,
     role: Role = Role.USER,
   ): Promise<MemoOnUser> {
+    // Callers without any role on the memo get the same answer as for a missing one,
+    // so the endpoint doesn't reveal which memo uuids exist.
     const memo = await memoRepository.findMemoAccess(memoUuid, assignedById);
-    if (!memo) {
+    const callerRole = memo?.users[0]?.role;
+    if (!memo || !callerRole) {
       throw new ForbiddenError('Memo not found or you do not have access to it');
     }
 
     // A memo's ADMINs can share it with any role, its MODs only as USER.
-    const callerRole = memo.users[0]?.role;
-    if (!callerRole || callerRole === Role.USER) {
+    if (callerRole === Role.USER) {
       throw new ForbiddenError(
         'Only users with sufficient permissions can assign memos to other users',
       );

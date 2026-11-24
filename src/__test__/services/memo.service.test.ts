@@ -203,12 +203,13 @@ describe('MemoService.assignMemoToUser', () => {
     expect(memos.assignMemoToUser).not.toHaveBeenCalled();
   });
 
-  it('forbids a caller who is not assigned to the memo', async () => {
+  it('answers a caller who is not assigned to the memo as if it did not exist', async () => {
     memos.findMemoAccess.mockResolvedValue(accessWithCallerRole(null));
 
     await expect(memoService.assignMemoToUser('memo-uuid', 'bob-uuid', 1)).rejects.toThrow(
-      ForbiddenError,
+      new ForbiddenError('Memo not found or you do not have access to it'),
     );
+    expect(users.findIdByUuid).not.toHaveBeenCalled();
     expect(memos.assignMemoToUser).not.toHaveBeenCalled();
   });
 

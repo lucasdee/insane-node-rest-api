@@ -327,12 +327,15 @@ describe('POST /memos/assign', () => {
     expect(await listMemos(carol).then((r) => r.body)).toEqual([]);
   });
 
-  it('forbids sharing a memo the caller has no access to', async () => {
+  it('forbids sharing a memo the caller has no access to, answering as for a missing memo', async () => {
     const memoUuid = await memoBy(alice);
 
     const res = await assign(bob, memoUuid, carol.uuid);
+    const missing = await assign(bob, randomUUID(), carol.uuid);
 
     expect(res.status).toBe(403);
+    expect(res.body).toEqual({ message: 'Memo not found or you do not have access to it' });
+    expect(res.body).toEqual(missing.body);
   });
 
   it('returns 403 for a memo that does not exist, without revealing that', async () => {
