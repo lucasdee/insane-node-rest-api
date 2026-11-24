@@ -6,6 +6,7 @@ import {
 } from '../repositories/memo.repository';
 import { userRepository } from '../repositories/user.repository';
 import { Memo, MemoOnUser } from '../dtos/memo.dto';
+import { TagCount } from '../dtos/tag.dto';
 import { Prisma } from '../generated/prisma/client';
 import { Role } from '../generated/prisma/enums';
 import { ConflictError, ForbiddenError, NotFoundError } from '../errors';
@@ -16,6 +17,7 @@ const toMemo = (memo: PublicMemo): Memo => ({
   content: memo.content,
   authorUuid: memo.author.uuid,
   createdAt: memo.createdAt,
+  tags: memo.tags.map((t) => t.tag.name).sort(),
 });
 
 const toMemoOnUser = (link: PublicMemoOnUser): MemoOnUser => ({
@@ -31,14 +33,60 @@ const toMemoOnUserWithMemo = (link: PublicMemoOnUserWithMemo): MemoOnUser => ({
   memo: toMemo(link.memo),
 });
 
+/** Trims, lowercases and de-duplicates tag names. */
+export const normalizeTags = (tags: string[] = []): string[] => [
+  ...new Set(tags.map((tag) => tag.trim().toLowerCase())),
+];
+
 export class MemoService {
-  async listUserMemos(userId: number): Promise<MemoOnUser[]> {
-    const links = await memoRepository.listUserMemos(userId);
+  /**
+   * Lists the user's memos. With tags, only memos carrying `all` of them (the
+   * default) or `any` one of them.
+   */
+  async listUserMemos(
+    userId: number,
+    tags?: string[],
+    match: 'all' | 'any' = 'all',
+  ): Promise<MemoOnUser[]> {
+    const links = await memoRepository.listUserMemos(userId, {
+      tags: normalizeTags(tags),
+      match,
+    });
     return links.map(toMemoOnUserWithMemo);
   }
 
-  async createMemo(title: string, content: string, createdById: number): Promise<Memo> {
-    return toMemo(await memoRepository.createMemo(title, content, createdById));
+  async listUserTags(userId: number): Promise<TagCount[]> {
+    const tags = await memoRepository.listUserTags(userId);
+    return tags
+      .map((tag) => ({ name: tag.name, memoCount: tag._count.memos }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async createMemo(
+    title: string,
+    content: string,
+    createdById: number,
+    tags?: string[],
+  ): Promise<Memo> {
+    return toMemo(
+      await memoRepository.createMemo(title, content, createdById, normalizeTags(tags)),
+    );
+  }
+
+  /** Replaces a memo's tags. Only the memo's ADMINs and MODs may do this. */
+  async replaceMemoTags(memoUuid: string, tags: string[], userId: number): Promise<Memo> {
+    // Callers without any role on the memo get the same answer as for a missing one,
+    // so the endpoint doesn't reveal which memo uuids exist.
+    const memo = await memoRepository.findMemoAccess(memoUuid, userId);
+    const callerRole = memo?.users[0]?.role;
+    if (!memo || !callerRole) {
+      throw new ForbiddenError('Memo not found or you do not have access to it');
+    }
+    if (callerRole === Role.USER) {
+      throw new ForbiddenError("Only the memo's ADMINs and MODs can change its tags");
+    }
+
+    return toMemo(await memoRepository.replaceMemoTags(memo.id, normalizeTags(tags)));
   }
 
   async assignMemoToUser(

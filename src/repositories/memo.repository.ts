@@ -4,6 +4,7 @@ import {
   MemoGetPayload,
   MemoOnUserGetPayload,
   MemoOnUserSelect,
+  MemoOnUserWhereInput,
   MemoSelect,
 } from '../generated/prisma/models';
 
@@ -17,6 +18,7 @@ export const publicMemoSelect = {
   content: true,
   createdAt: true,
   author: { select: { uuid: true } },
+  tags: { select: { tag: { select: { name: true } } } },
 } satisfies MemoSelect;
 
 export const publicMemoOnUserSelect = {
@@ -41,11 +43,47 @@ export type PublicMemoOnUserWithMemo = MemoOnUserGetPayload<{
 /** A memo's internal id and the given user's role on it, if they have one. */
 export type MemoAccess = { id: number; users: { role: Role }[] };
 
+/**
+ * Restricts a memo list to memos carrying the given tags: `all` of them, or `any`
+ * one of them. Tag names must already be normalized.
+ */
+export type TagFilter = { tags: string[]; match: 'all' | 'any' };
+
+/** A tag on the user's memos, with how many of them carry it. */
+export type UserTagCount = { name: string; _count: { memos: number } };
+
+/** Creates the tags that don't exist yet. INSERT IGNORE makes concurrent calls safe. */
+const ensureTags = async (names: string[]) => {
+  if (names.length > 0) {
+    await prisma.tag.createMany({ data: names.map((name) => ({ name })), skipDuplicates: true });
+  }
+};
+
+/** Nested writes linking a memo to existing tags. */
+const connectTags = (names: string[]) => names.map((name) => ({ tag: { connect: { name } } }));
+
+const tagWhere = (filter?: TagFilter): MemoOnUserWhereInput => {
+  if (!filter || filter.tags.length === 0) return {};
+  if (filter.match === 'any') {
+    return { memo: { tags: { some: { tag: { name: { in: filter.tags } } } } } };
+  }
+  return { memo: { AND: filter.tags.map((name) => ({ tags: { some: { tag: { name } } } })) } };
+};
+
 export class MemoRepository {
-  async listUserMemos(userId: number): Promise<PublicMemoOnUserWithMemo[]> {
+  async listUserMemos(userId: number, filter?: TagFilter): Promise<PublicMemoOnUserWithMemo[]> {
     return prisma.memoOnUser.findMany({
-      where: { userId },
+      where: { userId, ...tagWhere(filter) },
       select: publicMemoOnUserWithMemoSelect,
+    });
+  }
+
+  /** Tags on memos the user is assigned to, counting only those memos. */
+  async listUserTags(userId: number): Promise<UserTagCount[]> {
+    const onUsersMemos = { memo: { users: { some: { userId } } } };
+    return prisma.tag.findMany({
+      where: { memos: { some: onUsersMemos } },
+      select: { name: true, _count: { select: { memos: { where: onUsersMemos } } } },
     });
   }
 
@@ -63,7 +101,14 @@ export class MemoRepository {
     });
   }
 
-  async createMemo(title: string, content: string, createdById: number): Promise<PublicMemo> {
+  /** `tagNames` must already be normalized. */
+  async createMemo(
+    title: string,
+    content: string,
+    createdById: number,
+    tagNames: string[] = [],
+  ): Promise<PublicMemo> {
+    await ensureTags(tagNames);
     return prisma.memo.create({
       data: {
         title,
@@ -76,7 +121,21 @@ export class MemoRepository {
             role: Role.ADMIN,
           },
         },
+        tags: { create: connectTags(tagNames) },
       },
+      select: publicMemoSelect,
+    });
+  }
+
+  /**
+   * Replaces all of a memo's tags. Prisma runs the nested delete and create in one
+   * transaction. `tagNames` must already be normalized.
+   */
+  async replaceMemoTags(memoId: number, tagNames: string[]): Promise<PublicMemo> {
+    await ensureTags(tagNames);
+    return prisma.memo.update({
+      where: { id: memoId },
+      data: { tags: { deleteMany: {}, create: connectTags(tagNames) } },
       select: publicMemoSelect,
     });
   }

@@ -51,6 +51,26 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"TagCount": {
+				"properties": {
+					"name": {
+						"type": "string",
+						"example": "groceries"
+					},
+					"memoCount": {
+						"type": "number",
+						"format": "double",
+						"description": "How many of the caller's memos carry the tag.",
+						"example": 3
+					}
+				},
+				"required": [
+					"name",
+					"memoCount"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"Memo": {
 				"properties": {
 					"uuid": {
@@ -73,6 +93,17 @@
 						"type": "string",
 						"format": "date-time",
 						"example": "2024-01-01T00:00:00.000Z"
+					},
+					"tags": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array",
+						"description": "The memo's tags, lowercased and sorted.",
+						"example": [
+							"groceries",
+							"home"
+						]
 					}
 				},
 				"required": [
@@ -80,7 +111,8 @@
 					"title",
 					"content",
 					"authorUuid",
-					"createdAt"
+					"createdAt",
+					"tags"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -127,6 +159,11 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"TagName": {
+				"type": "string",
+				"description": "A tag name. It is stored lowercased, so \"Home\" and \"home\" are the same tag.",
+				"pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$"
+			},
 			"MemoCreateRequest": {
 				"properties": {
 					"title": {
@@ -140,11 +177,44 @@
 						"example": "This is the content of my first memo.",
 						"minLength": 3,
 						"maxLength": 10000
+					},
+					"tags": {
+						"items": {
+							"$ref": "#/components/schemas/TagName"
+						},
+						"type": "array",
+						"description": "Tags to put on the memo. Duplicates (ignoring case) are merged.",
+						"example": [
+							"groceries",
+							"home"
+						],
+						"maxItems": 10
 					}
 				},
 				"required": [
 					"title",
 					"content"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"MemoTagsUpdateRequest": {
+				"properties": {
+					"tags": {
+						"items": {
+							"$ref": "#/components/schemas/TagName"
+						},
+						"type": "array",
+						"description": "The memo's new tags, replacing all current ones. An empty list removes them all.",
+						"example": [
+							"groceries",
+							"home"
+						],
+						"maxItems": 10
+					}
+				},
+				"required": [
+					"tags"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -312,6 +382,36 @@
 				"parameters": []
 			}
 		},
+		"/tags": {
+			"get": {
+				"operationId": "ListMyTags",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/TagCount"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Lists the tags on memos assigned to you, sorted by name, with how many of them carry each.",
+				"tags": [
+					"Tags"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
 		"/memos": {
 			"get": {
 				"operationId": "ListMyMemos",
@@ -330,6 +430,7 @@
 						}
 					}
 				},
+				"description": "Lists the memos assigned to you, optionally filtered by tags.",
 				"tags": [
 					"Memos"
 				],
@@ -338,7 +439,34 @@
 						"jwt": []
 					}
 				],
-				"parameters": []
+				"parameters": [
+					{
+						"description": "Only memos with these tags. Repeat the parameter for several: `?tags=a&tags=b`.",
+						"in": "query",
+						"name": "tags",
+						"required": false,
+						"schema": {
+							"type": "array",
+							"items": {
+								"$ref": "#/components/schemas/TagName"
+							},
+							"maxItems": 10
+						}
+					},
+					{
+						"description": "`all` (the default): memos carrying every given tag. `any`: memos carrying at least one.",
+						"in": "query",
+						"name": "match",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"enum": [
+								"all",
+								"any"
+							]
+						}
+					}
+				]
 			}
 		},
 		"/memos/create": {
@@ -371,6 +499,55 @@
 						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/MemoCreateRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/memos/{memoUuid}/tags": {
+			"put": {
+				"operationId": "ReplaceMemoTags",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Memo"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Memo not found or you do not have access to it, or your role on the memo does not allow changing its tags"
+					}
+				},
+				"description": "Replaces all of a memo's tags. Only the memo's ADMINs and MODs can do this.",
+				"tags": [
+					"Memos"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "memoUuid",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/MemoTagsUpdateRequest"
 							}
 						}
 					}

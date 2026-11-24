@@ -7,6 +7,8 @@ import { ExpressTemplateService } from '@tsoa/runtime/express';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { UserController } from './../controllers/user.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { TagsController } from './../controllers/tag.controller';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { MemosController } from './../controllers/memo.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { AuthController } from './../controllers/auth.controller';
@@ -33,6 +35,15 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "TagCount": {
+        "dataType": "refObject",
+        "properties": {
+            "name": {"dataType":"string","required":true},
+            "memoCount": {"dataType":"double","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "Memo": {
         "dataType": "refObject",
         "properties": {
@@ -41,6 +52,7 @@ const models: TsoaRoute.Models = {
             "content": {"dataType":"string","required":true},
             "authorUuid": {"dataType":"string","required":true},
             "createdAt": {"dataType":"datetime","required":true},
+            "tags": {"dataType":"array","array":{"dataType":"string"},"required":true},
         },
         "additionalProperties": false,
     },
@@ -58,11 +70,25 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "TagName": {
+        "dataType": "refAlias",
+        "type": {"dataType":"string","validators":{"pattern":{"value":"^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$","errorMsg":"Tags may only contain letters, digits, \"-\" and \"_\", start with a letter or digit, and be at most 32 characters long"}}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "MemoCreateRequest": {
         "dataType": "refObject",
         "properties": {
             "title": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide a valid title"},"minLength":{"errorMsg":"Please provide a title that is at least 3 characters long","value":3},"maxLength":{"errorMsg":"Please provide a title that is at most 128 characters long","value":128}}},
             "content": {"dataType":"string","required":true,"validators":{"isString":{"errorMsg":"Please provide valid content"},"minLength":{"errorMsg":"Please provide content that is at least 3 characters long","value":3},"maxLength":{"errorMsg":"Please provide content that is at most 10000 characters long","value":10000}}},
+            "tags": {"dataType":"array","array":{"dataType":"refAlias","ref":"TagName"},"validators":{"maxItems":{"errorMsg":"Please provide at most 10 tags","value":10}}},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "MemoTagsUpdateRequest": {
+        "dataType": "refObject",
+        "properties": {
+            "tags": {"dataType":"array","array":{"dataType":"refAlias","ref":"TagName"},"required":true,"validators":{"maxItems":{"errorMsg":"Please provide at most 10 tags","value":10}}},
         },
         "additionalProperties": false,
     },
@@ -155,8 +181,41 @@ export function RegisterRoutes(app: Router) {
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsTagsController_listMyTags: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+        };
+        app.get('/tags',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(TagsController)),
+            ...(fetchMiddlewares<RequestHandler>(TagsController.prototype.listMyTags)),
+
+            async function TagsController_listMyTags(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsTagsController_listMyTags, request, response, next });
+
+                const controller = new TagsController();
+
+              await templateService.apiHandler({
+                methodName: 'listMyTags',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsMemosController_listMyMemos: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                tags: {"in":"query","name":"tags","dataType":"array","array":{"dataType":"refAlias","ref":"TagName"},"validators":{"maxItems":{"errorMsg":"Please provide at most 10 tags","value":10}}},
+                match: {"in":"query","name":"match","dataType":"union","subSchemas":[{"dataType":"enum","enums":["all"]},{"dataType":"enum","enums":["any"]}]},
         };
         app.get('/memos',
             authenticateMiddleware([{"jwt":[]}]),
@@ -212,6 +271,39 @@ export function RegisterRoutes(app: Router) {
                 next,
                 validatedArgs,
                 successStatus: 201,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsMemosController_replaceMemoTags: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                memoUuid: {"in":"path","name":"memoUuid","required":true,"dataType":"string"},
+                body: {"in":"body","name":"body","required":true,"ref":"MemoTagsUpdateRequest"},
+        };
+        app.put('/memos/:memoUuid/tags',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(MemosController)),
+            ...(fetchMiddlewares<RequestHandler>(MemosController.prototype.replaceMemoTags)),
+
+            async function MemosController_replaceMemoTags(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsMemosController_replaceMemoTags, request, response, next });
+
+                const controller = new MemosController();
+
+              await templateService.apiHandler({
+                methodName: 'replaceMemoTags',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
               });
             } catch (err) {
                 return next(err);

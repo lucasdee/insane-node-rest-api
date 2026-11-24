@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { memoService } from '../../services/memo.service';
+import { memoService, normalizeTags } from '../../services/memo.service';
 import { memoRepository } from '../../repositories/memo.repository';
 import { userRepository } from '../../repositories/user.repository';
 import { ConflictError, ForbiddenError, NotFoundError } from '../../errors';
@@ -8,7 +8,9 @@ import { Prisma } from '../../generated/prisma/client';
 vi.mock('../../repositories/memo.repository', () => ({
   memoRepository: {
     listUserMemos: vi.fn(),
+    listUserTags: vi.fn(),
     createMemo: vi.fn(),
+    replaceMemoTags: vi.fn(),
     findMemoAccess: vi.fn(),
     assignMemoToUser: vi.fn(),
   },
@@ -31,6 +33,7 @@ const publicMemo = {
   content: 'Content',
   createdAt,
   author: { uuid: 'alice-uuid' },
+  tags: [] as { tag: { name: string } }[],
 };
 
 /** The memo as the API returns it. */
@@ -40,7 +43,13 @@ const memoDto = {
   content: 'Content',
   authorUuid: 'alice-uuid',
   createdAt,
+  tags: [] as string[],
 };
+
+const withTags = (...names: string[]) => ({
+  ...publicMemo,
+  tags: names.map((name) => ({ tag: { name } })),
+});
 
 const publicLink = {
   role: 'USER' as const,
@@ -72,7 +81,48 @@ describe('MemoService.listUserMemos', () => {
     memos.listUserMemos.mockResolvedValue([{ ...publicLink, memo: publicMemo }]);
 
     expect(await memoService.listUserMemos(1)).toEqual([{ ...linkDto, memo: memoDto }]);
-    expect(memos.listUserMemos).toHaveBeenCalledWith(1);
+    expect(memos.listUserMemos).toHaveBeenCalledWith(1, { tags: [], match: 'all' });
+  });
+
+  it('normalizes the tag filter and passes the match mode through', async () => {
+    memos.listUserMemos.mockResolvedValue([]);
+
+    await memoService.listUserMemos(1, ['Home', ' home', 'WORK'], 'any');
+
+    expect(memos.listUserMemos).toHaveBeenCalledWith(1, { tags: ['home', 'work'], match: 'any' });
+  });
+
+  it('returns each memo’s tags as sorted names', async () => {
+    memos.listUserMemos.mockResolvedValue([{ ...publicLink, memo: withTags('work', 'home') }]);
+
+    const [link] = await memoService.listUserMemos(1);
+
+    expect(link.memo?.tags).toEqual(['home', 'work']);
+  });
+});
+
+describe('normalizeTags', () => {
+  it('trims, lowercases and de-duplicates, keeping the first occurrence order', () => {
+    expect(normalizeTags([' Work', 'home', 'WORK', 'Home '])).toEqual(['work', 'home']);
+  });
+
+  it('treats missing tags as none', () => {
+    expect(normalizeTags()).toEqual([]);
+  });
+});
+
+describe('MemoService.listUserTags', () => {
+  it('flattens the counts and sorts the tags by name', async () => {
+    memos.listUserTags.mockResolvedValue([
+      { name: 'work', _count: { memos: 1 } },
+      { name: 'home', _count: { memos: 2 } },
+    ]);
+
+    expect(await memoService.listUserTags(1)).toEqual([
+      { name: 'home', memoCount: 2 },
+      { name: 'work', memoCount: 1 },
+    ]);
+    expect(memos.listUserTags).toHaveBeenCalledWith(1);
   });
 });
 
@@ -81,7 +131,55 @@ describe('MemoService.createMemo', () => {
     memos.createMemo.mockResolvedValue(publicMemo);
 
     expect(await memoService.createMemo('Title', 'Content', 1)).toEqual(memoDto);
-    expect(memos.createMemo).toHaveBeenCalledWith('Title', 'Content', 1);
+    expect(memos.createMemo).toHaveBeenCalledWith('Title', 'Content', 1, []);
+  });
+
+  it('normalizes the tags before creating the memo', async () => {
+    memos.createMemo.mockResolvedValue(withTags('home'));
+
+    expect(await memoService.createMemo('Title', 'Content', 1, ['Home', 'home'])).toEqual({
+      ...memoDto,
+      tags: ['home'],
+    });
+    expect(memos.createMemo).toHaveBeenCalledWith('Title', 'Content', 1, ['home']);
+  });
+});
+
+describe('MemoService.replaceMemoTags', () => {
+  it.each(['MOD', 'ADMIN'] as const)(
+    'lets a %s replace the tags with normalized ones',
+    async (role) => {
+      memos.findMemoAccess.mockResolvedValue(accessWithCallerRole(role));
+      memos.replaceMemoTags.mockResolvedValue(withTags('home'));
+
+      expect(await memoService.replaceMemoTags('memo-uuid', ['HOME'], 1)).toEqual({
+        ...memoDto,
+        tags: ['home'],
+      });
+      expect(memos.findMemoAccess).toHaveBeenCalledWith('memo-uuid', 1);
+      expect(memos.replaceMemoTags).toHaveBeenCalledWith(10, ['home']);
+    },
+  );
+
+  it.each([
+    ['does not exist', null],
+    ['is not shared with the caller', accessWithCallerRole(null)],
+  ])('forbids changing the tags of a memo that %s, without telling which', async (_l, access) => {
+    memos.findMemoAccess.mockResolvedValue(access);
+
+    await expect(memoService.replaceMemoTags('memo-uuid', ['home'], 1)).rejects.toThrow(
+      new ForbiddenError('Memo not found or you do not have access to it'),
+    );
+    expect(memos.replaceMemoTags).not.toHaveBeenCalled();
+  });
+
+  it('forbids a caller with the USER role on the memo', async () => {
+    memos.findMemoAccess.mockResolvedValue(accessWithCallerRole('USER'));
+
+    await expect(memoService.replaceMemoTags('memo-uuid', ['home'], 1)).rejects.toThrow(
+      new ForbiddenError("Only the memo's ADMINs and MODs can change its tags"),
+    );
+    expect(memos.replaceMemoTags).not.toHaveBeenCalled();
   });
 });
 

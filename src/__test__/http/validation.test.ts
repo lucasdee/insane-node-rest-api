@@ -18,6 +18,9 @@ const validAssign = {
   userUuid: '9b2d7c1e-4f3a-4b6c-9d8e-7f6a5b4c3d2e',
 };
 
+/** `count` distinct valid tag names. */
+const tagList = (count: number) => Array.from({ length: count }, (_, i) => `tag${i}`);
+
 /** A syntactically valid email address of exactly `length` characters. */
 const emailOfLength = (length: number) =>
   `${'a'.repeat(64)}@${'b'.repeat(length - 64 - 1 - '.com'.length)}.com`;
@@ -115,6 +118,12 @@ describe.each([
       ],
       ['a missing title', { content: 'Content' }, 'body.title'],
       ['an unknown property', { ...validMemo, authorId: 99 }, 'body.authorId'],
+      ['a non-string tag', { ...validMemo, tags: [42] }, 'body.tags.$0'],
+      ['more than 10 tags', { ...validMemo, tags: tagList(11) }, 'body.tags'],
+      ['a tag with a space', { ...validMemo, tags: ['ok', 'has space'] }, 'body.tags.$1'],
+      ['a tag longer than 32 characters', { ...validMemo, tags: ['t'.repeat(33)] }, 'body.tags.$0'],
+      ['an empty tag', { ...validMemo, tags: [''] }, 'body.tags.$0'],
+      ['a tag starting with "-"', { ...validMemo, tags: ['-home'] }, 'body.tags.$0'],
     ] as Case[],
   ],
   [
@@ -150,6 +159,48 @@ describe.each([
 
     expect(res.status).toBe(422);
     expect(res.body.message).toBe('Validation failed');
+    expect(Object.keys(res.body.details)).toContain(field);
+  });
+});
+
+describe('PUT /memos/{memoUuid}/tags', () => {
+  const put = (body: object) =>
+    request(app)
+      .put('/memos/123e4567-e89b-12d3-a456-426614174000/tags')
+      .set('Authorization', bearer(1))
+      .send(body);
+
+  it.each([
+    ['missing tags', {}, 'body.tags'],
+    ['more than 10 tags', { tags: tagList(11) }, 'body.tags'],
+    ['a tag with a space', { tags: ['has space'] }, 'body.tags.$0'],
+    ['an unknown property', { tags: [], memoId: 1 }, 'body.memoId'],
+  ])('returns 422 for %s', async (_label, body, field) => {
+    const res = await put(body);
+
+    expect(res.status).toBe(422);
+    expect(Object.keys(res.body.details)).toContain(field);
+  });
+});
+
+describe('GET /memos query', () => {
+  const get = (query: string) =>
+    request(app).get(`/memos?${query}`).set('Authorization', bearer(1));
+
+  it.each([
+    ['an unknown match mode', 'match=some', 'match'],
+    ['an invalid tag', 'tags=a%20b', 'tags.$0'],
+    [
+      'more than 10 tags',
+      tagList(11)
+        .map((t) => `tags=${t}`)
+        .join('&'),
+      'tags',
+    ],
+  ])('returns 422 for %s', async (_label, query, field) => {
+    const res = await get(query);
+
+    expect(res.status).toBe(422);
     expect(Object.keys(res.body.details)).toContain(field);
   });
 });
@@ -220,5 +271,18 @@ describe('maximum lengths', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.content).toHaveLength(10_000);
+  });
+
+  it('accepts a memo with 10 tags of 32 characters', async () => {
+    const author = seedUser();
+    const tags = tagList(10).map((t) => t.padEnd(32, 'x'));
+
+    const res = await request(app)
+      .post('/memos/create')
+      .set('Authorization', bearer(author.id))
+      .send({ ...validMemo, tags });
+
+    expect(res.status).toBe(201);
+    expect(res.body.tags).toEqual([...tags].sort());
   });
 });

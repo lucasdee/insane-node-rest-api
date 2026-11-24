@@ -1,5 +1,11 @@
 import { Example } from '@tsoa/runtime';
 
+/**
+ * A tag name. It is stored lowercased, so "Home" and "home" are the same tag.
+ * @pattern ^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$ Tags may only contain letters, digits, "-" and "_", start with a letter or digit, and be at most 32 characters long
+ */
+export type TagName = string;
+
 export class Memo {
   @Example('123e4567-e89b-12d3-a456-426614174000')
   uuid!: string;
@@ -15,6 +21,10 @@ export class Memo {
 
   @Example('2024-01-01T00:00:00.000Z')
   createdAt!: Date;
+
+  /** The memo's tags, lowercased and sorted. */
+  @Example(['groceries', 'home'])
+  tags!: string[];
 }
 
 export class MemoOnUser {
@@ -53,6 +63,22 @@ export class MemoCreateRequest {
    */
   @Example('This is the content of my first memo.')
   content!: string;
+
+  /**
+   * Tags to put on the memo. Duplicates (ignoring case) are merged.
+   * @maxItems 10 Please provide at most 10 tags
+   */
+  @Example(['groceries', 'home'])
+  tags?: TagName[];
+}
+
+export class MemoTagsUpdateRequest {
+  /**
+   * The memo's new tags, replacing all current ones. An empty list removes them all.
+   * @maxItems 10 Please provide at most 10 tags
+   */
+  @Example(['groceries', 'home'])
+  tags!: TagName[];
 }
 
 export class MemoOnUserCreateRequest {
