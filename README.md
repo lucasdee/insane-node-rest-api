@@ -103,7 +103,7 @@ The `*_ENABLED` settings accept exactly `true` or `false`.
    npm run dev
    ```
 
-The OpenAPI spec and routes are committed, so there's nothing to generate for them (see [OpenAPI / Swagger](#openapi--swagger)).
+The OpenAPI spec, routes and API types are committed, so there's nothing to generate for them (see [OpenAPI / Swagger](#openapi--swagger)).
 
 ## Database Migrations
 
@@ -181,13 +181,11 @@ The generated spec is available at `src/docs/swagger.json`, and the running app 
 
 ## API Types
 
-Generate TypeScript types for the API:
+`generated/api.ts` holds TypeScript types (and a fetch client) for the API, generated from `src/docs/swagger.json`. It is committed because [insane-react-pwa](https://github.com/lucasdee/insane-react-pwa) takes its API types from it. After regenerating the spec, regenerate this file too (this is also part of `build`) and commit it. CI fails if it is out of date.
 
 ```bash
 npm run types:generate
 ```
-
-The generated file will be available at `generated/api.ts`
 
 ## Testing
 
@@ -218,7 +216,7 @@ npm run format:fix
 
 - `src/config/env.ts` reads and checks every environment variable.
 - Add or update API controllers in `src/controllers` and DTOs in `src/dtos`.
-- CI (`.github/workflows/ci.yml`) fails on high or critical `npm audit` advisories, builds the project, checks that the committed `swagger.json` and `routes.ts` match what tsoa generates, and runs lint, the Prettier check, a type check including tests, and the tests with coverage, on pushes to `main` and on pull requests.
+- CI (`.github/workflows/ci.yml`) fails on high or critical `npm audit` advisories, builds the project, checks that the committed `swagger.json`, `routes.ts` and `generated/api.ts` match what the build generates, and runs lint, the Prettier check, a type check including tests, and the tests with coverage, on pushes to `main` and on pull requests.
 
 ## License
 

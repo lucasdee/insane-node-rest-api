@@ -7,7 +7,9 @@ import { Prisma } from '../../generated/prisma/client';
  * - `select` returns only the selected fields, including nested relation selects
  * - without `select`, user.password is omitted (the global `omit` in config/db)
  * - unique violations throw P2002, missing foreign keys throw P2003, failed connects P2025
- * - `where` can filter on relations (`some`, nested to-one filters), `in` and `AND`
+ * - `where` can filter on relations (`some`, nested to-one filters), `in`, `not`, `AND` and `OR`
+ * - `contains` ignores case, like the tables' utf8mb4_unicode_ci collation
+ * - user.findMany supports `orderBy` on one field, `take` and `skip`
  * - `_count` in a select counts related rows, optionally filtered by `where`
  * - updateMany and deleteMany return a count and never throw
  *
@@ -111,6 +113,9 @@ const matches = (row: object, where: Where = {}, model?: Model): boolean =>
     if (key === 'AND') {
       return (condition as Where[]).every((w) => matches(row, w, model));
     }
+    if (key === 'OR') {
+      return (condition as Where[]).some((w) => matches(row, w, model));
+    }
     if (model && relations[model][key]) {
       const { model: relModel, related } = resolveRelation(model, row, key);
       const filter = condition as Where;
@@ -127,6 +132,13 @@ const matches = (row: object, where: Where = {}, model?: Model): boolean =>
     if (condition && typeof condition === 'object' && 'in' in condition) {
       return (condition as { in: unknown[] }).in.includes(value);
     }
+    if (condition && typeof condition === 'object' && 'not' in condition) {
+      return value !== (condition as { not: unknown }).not;
+    }
+    if (condition && typeof condition === 'object' && 'contains' in condition) {
+      const needle = (condition as { contains: string }).contains.toLowerCase();
+      return typeof value === 'string' && value.toLowerCase().includes(needle);
+    }
     return value === condition;
   });
 
@@ -134,6 +146,18 @@ const project = (row: object, select?: Select, omit: string[] = []) =>
   Object.fromEntries(
     Object.entries(row).filter(([key]) => (select ? select[key] : !omit.includes(key))),
   );
+
+/** Sorts rows like `orderBy: { field: 'asc' | 'desc' }`, without mutating them. */
+const orderRows = <T extends object>(rows: T[], orderBy?: Record<string, 'asc' | 'desc'>) => {
+  const [field, direction] = Object.entries(orderBy ?? {})[0] ?? [];
+  if (!field) return rows;
+  const sign = direction === 'desc' ? -1 : 1;
+  return [...rows].sort((a, b) => {
+    const x = (a as Record<string, never>)[field];
+    const y = (b as Record<string, never>)[field];
+    return x < y ? -sign : x > y ? sign : 0;
+  });
+};
 
 const deleteWhere = <T extends object>(rows: T[], where: Where) => {
   const remaining = rows.filter((row) => !matches(row, where));
@@ -259,6 +283,25 @@ export const fakePrisma = {
       const row = fakeDb.users.find((u) => matches(u, where));
       return row ? project(row, select, ['password']) : null;
     },
+    findMany: async ({
+      where,
+      orderBy,
+      take,
+      skip = 0,
+      select,
+    }: {
+      where?: Where;
+      orderBy?: Record<string, 'asc' | 'desc'>;
+      take?: number;
+      skip?: number;
+      select?: Select;
+    }) =>
+      orderRows(
+        fakeDb.users.filter((u) => matches(u, where, 'user')),
+        orderBy,
+      )
+        .slice(skip, take === undefined ? undefined : skip + take)
+        .map((u) => project(u, select, ['password'])),
     create: async ({ data, select }: { data: Partial<UserRow>; select?: Select }) => {
       if (fakeDb.users.some((u) => u.username === data.username || u.email === data.email)) {
         throw knownError('P2002', 'Unique constraint failed on users_username_key/users_email_key');

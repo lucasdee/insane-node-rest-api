@@ -22,6 +22,16 @@ const expressAuthenticationRecasted = expressAuthentication as (req: ExRequest, 
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
 const models: TsoaRoute.Models = {
+    "UserSummary": {
+        "dataType": "refObject",
+        "properties": {
+            "uuid": {"dataType":"string","required":true},
+            "username": {"dataType":"string","required":true},
+            "displayName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "User": {
         "dataType": "refObject",
         "properties": {
@@ -150,6 +160,40 @@ export function RegisterRoutes(app: Router) {
 
 
     
+        const argsUserController_searchUsers: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                search: {"in":"query","name":"search","dataType":"string","validators":{"minLength":{"errorMsg":"Please provide at least 1 character to search for","value":1},"maxLength":{"errorMsg":"Please provide at most 64 characters to search for","value":64}}},
+                limit: {"in":"query","name":"limit","dataType":"integer","validators":{"isInt":{"errorMsg":"Please provide a whole number"},"minimum":{"errorMsg":"Please provide a limit of at least 1","value":1},"maximum":{"errorMsg":"Please provide a limit of at most 50","value":50}}},
+                offset: {"in":"query","name":"offset","dataType":"integer","validators":{"isInt":{"errorMsg":"Please provide a whole number"},"minimum":{"errorMsg":"Please provide an offset of at least 0","value":0}}},
+        };
+        app.get('/users',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(UserController)),
+            ...(fetchMiddlewares<RequestHandler>(UserController.prototype.searchUsers)),
+
+            async function UserController_searchUsers(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsUserController_searchUsers, request, response, next });
+
+                const controller = new UserController();
+
+              await templateService.apiHandler({
+                methodName: 'searchUsers',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsUserController_getProfile: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };

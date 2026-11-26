@@ -2,7 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import bcrypt from 'bcryptjs';
 import { ValidateError } from '@tsoa/runtime';
 import jwt, { type JwtPayload } from 'jsonwebtoken';
-import { BCRYPT_COST, DUMMY_PASSWORD_HASH, userService } from '../../services/user.service';
+import {
+  BCRYPT_COST,
+  DUMMY_PASSWORD_HASH,
+  USER_SEARCH_DEFAULT_LIMIT,
+  userService,
+} from '../../services/user.service';
 import { userRepository } from '../../repositories/user.repository';
 import { tokenRepository } from '../../repositories/token.repository';
 import { AuthError, ConflictError, ForbiddenError } from '../../errors';
@@ -14,6 +19,7 @@ vi.mock('../../repositories/user.repository', () => ({
     createUser: vi.fn(),
     findCredentialsByUsername: vi.fn(),
     findById: vi.fn(),
+    searchUsers: vi.fn(),
   },
 }));
 
@@ -334,5 +340,34 @@ describe('UserService.getUser', () => {
 
     expect(await userService.getUser(1)).toBe(user);
     expect(users.findById).toHaveBeenCalledWith(1);
+  });
+});
+
+describe('UserService.searchUsers', () => {
+  it('excludes the caller and applies the default limit and offset', async () => {
+    const found = [{ uuid: 'u-2', username: 'bob', displayName: null }];
+    users.searchUsers.mockResolvedValue(found);
+
+    expect(await userService.searchUsers(1)).toBe(found);
+    expect(users.searchUsers).toHaveBeenCalledWith({
+      excludeId: 1,
+      search: undefined,
+      limit: USER_SEARCH_DEFAULT_LIMIT,
+      offset: 0,
+    });
+    expect(USER_SEARCH_DEFAULT_LIMIT).toBe(20);
+  });
+
+  it('passes the search, limit and offset through', async () => {
+    users.searchUsers.mockResolvedValue([]);
+
+    await userService.searchUsers(7, { search: 'bo', limit: 5, offset: 15 });
+
+    expect(users.searchUsers).toHaveBeenCalledWith({
+      excludeId: 7,
+      search: 'bo',
+      limit: 5,
+      offset: 15,
+    });
   });
 });

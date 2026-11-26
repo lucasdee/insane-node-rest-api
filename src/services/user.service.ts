@@ -8,7 +8,7 @@ import { tokenRepository } from '../repositories/token.repository';
 import { LoginRequest, RegisterRequest } from '../dtos/auth.dto';
 import { AuthError, ConflictError, ForbiddenError } from '../errors';
 import { AuthTokens } from './types';
-import { User } from '../dtos/user.dto';
+import { User, UserSummary } from '../dtos/user.dto';
 import { Role } from '../generated/prisma/enums';
 import { assertPasswordFitsBcrypt } from '../utils/password';
 import { subjectFor, userIdFromSubject } from '../utils/jwtSubject';
@@ -20,6 +20,11 @@ const {
   accessTokenExpiresInMinutes,
   refreshTokenExpiresInDays,
 } = env.jwt;
+
+/** How many users a search returns when the caller doesn't say. */
+export const USER_SEARCH_DEFAULT_LIMIT = 20;
+
+export type UserSearchParams = { search?: string; limit?: number; offset?: number };
 
 /** bcrypt cost for stored passwords. */
 export const BCRYPT_COST = 12;
@@ -181,6 +186,14 @@ export class UserService {
 
   async getUser(id: number): Promise<User | null> {
     return userRepository.findById(id);
+  }
+
+  /** Other users, for picking one: `search` matches the username or display name. */
+  async searchUsers(
+    callerId: number,
+    { search, limit = USER_SEARCH_DEFAULT_LIMIT, offset = 0 }: UserSearchParams = {},
+  ): Promise<UserSummary[]> {
+    return userRepository.searchUsers({ excludeId: callerId, search, limit, offset });
   }
 }
 

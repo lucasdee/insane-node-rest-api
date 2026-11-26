@@ -16,6 +16,27 @@ export const publicUserSelect = {
 
 export type PublicUser = UserGetPayload<{ select: typeof publicUserSelect }>;
 
+/**
+ * Allowlist of user fields that any signed-in user may see of others, for example
+ * to pick an assignee. Leaves out the email address and the role.
+ */
+export const userSummarySelect = {
+  uuid: true,
+  username: true,
+  displayName: true,
+} satisfies UserSelect;
+
+export type UserSummaryRow = UserGetPayload<{ select: typeof userSummarySelect }>;
+
+export type UserSearch = {
+  /** Left out of the results: the user who searches. */
+  excludeId: number;
+  /** A substring of the username or the display name. Case-insensitive under the table's collation. */
+  search?: string;
+  limit: number;
+  offset: number;
+};
+
 export type UserCredentials = { id: number; password: string };
 
 export class UserRepository {
@@ -23,6 +44,22 @@ export class UserRepository {
     return prisma.user.findUnique({
       where: { id },
       select: publicUserSelect,
+    });
+  }
+
+  /** Users other than `excludeId`, optionally filtered by `search`, ordered by username. */
+  async searchUsers({ excludeId, search, limit, offset }: UserSearch): Promise<UserSummaryRow[]> {
+    return prisma.user.findMany({
+      where: {
+        id: { not: excludeId },
+        ...(search && {
+          OR: [{ username: { contains: search } }, { displayName: { contains: search } }],
+        }),
+      },
+      orderBy: { username: 'asc' },
+      take: limit,
+      skip: offset,
+      select: userSummarySelect,
     });
   }
 

@@ -7,6 +7,30 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
+			"UserSummary": {
+				"description": "What other users may see of a user: enough to pick them, nothing private.",
+				"properties": {
+					"uuid": {
+						"type": "string",
+						"example": "123e4567-e89b-12d3-a456-426614174000"
+					},
+					"username": {
+						"type": "string",
+						"example": "jdoe"
+					},
+					"displayName": {
+						"type": "string",
+						"nullable": true,
+						"example": "John Doe"
+					}
+				},
+				"required": [
+					"uuid",
+					"username"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"User": {
 				"properties": {
 					"uuid": {
@@ -353,6 +377,71 @@
 		}
 	},
 	"paths": {
+		"/users": {
+			"get": {
+				"operationId": "SearchUsers",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/UserSummary"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Lists other users, ordered by username, for example to pick whom to assign a memo to.\nOnly uuid, username and display name are returned. You are never in the list.",
+				"tags": [
+					"Users"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Only users whose username or display name contains this, ignoring case.",
+						"in": "query",
+						"name": "search",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 64
+						}
+					},
+					{
+						"description": "How many users to return, 20 by default.",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "int32",
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 50
+						}
+					},
+					{
+						"description": "How many users to skip, for paging.",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "int32",
+							"type": "integer",
+							"minimum": 0
+						}
+					}
+				]
+			}
+		},
 		"/users/me": {
 			"get": {
 				"operationId": "GetProfile",
