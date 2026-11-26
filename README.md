@@ -15,7 +15,7 @@ A compact, fully-typed REST API starter using Node.js, TypeScript, Express, Pris
 
 ## Prerequisites
 
-- Node.js >= 24
+- Node.js >= 26
 - A MySQL or MariaDB instance with two databases (main & shadow) accessible from your environment
 - npm (or a compatible package manager)
 
