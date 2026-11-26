@@ -55,10 +55,10 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Check that the committed tsoa output is up to date
+      - name: Check that the committed tsoa output and API types are up to date
         run: |
-          if ! git diff --exit-code -- src/docs/swagger.json src/routes/routes.ts; then
-            echo "::error::swagger.json or routes.ts differs from what tsoa generates. Run 'npm run tsoa:spec && npm run tsoa:routes' and commit the result."
+          if ! git diff --exit-code -- src/docs/swagger.json src/routes/routes.ts generated/api.ts; then
+            echo "::error::swagger.json, routes.ts or generated/api.ts differs from what the build generates. Run 'npm run tsoa:spec && npm run tsoa:routes && npm run types:generate' and commit the result."
             exit 1
           fi
 

@@ -140,4 +140,5 @@ vite.config.ts.timestamp-*
 
 # Custom
 tsconfig.tsbuildinfo
-generated/
+# Prisma client (generated on install/build). generated/api.ts at the root is committed.
+src/generated/

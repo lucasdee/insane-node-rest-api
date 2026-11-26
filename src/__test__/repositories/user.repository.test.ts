@@ -1,8 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { publicUserSelect, userRepository } from '../../repositories/user.repository';
+import {
+  publicUserSelect,
+  userRepository,
+  userSummarySelect,
+} from '../../repositories/user.repository';
 
 const { prisma } = vi.hoisted(() => ({
-  prisma: { user: { findUnique: vi.fn(), create: vi.fn() } },
+  prisma: { user: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn() } },
 }));
 
 vi.mock('../../config/db', () => ({ prisma }));
@@ -24,7 +28,42 @@ describe('publicUserSelect', () => {
   });
 });
 
+describe('userSummarySelect', () => {
+  it('selects only fields that any signed-in user may see of others', () => {
+    expect(Object.keys(userSummarySelect).sort()).toEqual(['displayName', 'username', 'uuid']);
+  });
+});
+
 describe('UserRepository', () => {
+  it('searchUsers excludes the caller, matches username or display name, and pages', async () => {
+    const found = [{ uuid: 'u-2' }];
+    prisma.user.findMany.mockResolvedValue(found);
+
+    expect(
+      await userRepository.searchUsers({ excludeId: 1, search: 'ali', limit: 5, offset: 10 }),
+    ).toBe(found);
+    expect(prisma.user.findMany).toHaveBeenCalledWith({
+      where: {
+        id: { not: 1 },
+        OR: [{ username: { contains: 'ali' } }, { displayName: { contains: 'ali' } }],
+      },
+      orderBy: { username: 'asc' },
+      take: 5,
+      skip: 10,
+      select: userSummarySelect,
+    });
+  });
+
+  it('searchUsers without a search only excludes the caller', async () => {
+    prisma.user.findMany.mockResolvedValue([]);
+
+    await userRepository.searchUsers({ excludeId: 1, limit: 20, offset: 0 });
+
+    expect(prisma.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: { not: 1 } } }),
+    );
+  });
+
   it('findById selects only public fields', async () => {
     const user = { uuid: 'u-1' };
     prisma.user.findUnique.mockResolvedValue(user);
