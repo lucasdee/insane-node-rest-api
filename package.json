@@ -7,7 +7,7 @@
   "author": "lucasdee",
   "license": "MIT",
   "engines": {
-    "node": ">=24"
+    "node": ">=26"
   },
   "main": "dist/server.js",
   "scripts": {
@@ -50,7 +50,7 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.10",
-    "@types/node": "^25.9.9",
+    "@types/node": "^26.6.11",
     "@types/supertest": "^7.2.1",
     "@types/swagger-ui-express": "^4.1.8",
     "@vitest/coverage-v8": "^5.1.1",
