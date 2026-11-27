@@ -83,6 +83,28 @@ export class MemosController extends Controller {
   }
 
   /**
+   * Removes a user's assignment to a memo, so it no longer shows up in their list.
+   * Anyone can remove their own (leave the memo), and the ones they made if their role is
+   * at least as high as the assignee's. ADMINs can remove any, MODs those with the USER
+   * role. The author's assignment can't be removed, not even by the author.
+   */
+  @Delete('{memoUuid}/assignments/{userUuid}')
+  @Security('jwt')
+  @Response(204, 'No Content')
+  @Response(
+    403,
+    'Memo not found or you do not have access to it, or you may not remove this assignment',
+  )
+  @Response(404, 'The user is not assigned to the memo')
+  public async removeMemoAssignment(
+    @Request() req: AuthenticatedRequest,
+    @Path() memoUuid: string,
+    @Path() userUuid: string,
+  ): Promise<void> {
+    await memoService.removeAssignment(memoUuid, userUuid, req.user!.userId);
+  }
+
+  /**
    * Changes a memo's title, content and tags. Fields left out stay as they are. Only
    * the memo's author, ADMINs and MODs can do this.
    */

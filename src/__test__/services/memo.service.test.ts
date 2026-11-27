@@ -15,6 +15,8 @@ vi.mock('../../repositories/memo.repository', () => ({
     findMemoAccess: vi.fn(),
     findUserMemo: vi.fn(),
     listMemoAssignments: vi.fn(),
+    findAssignment: vi.fn(),
+    removeAssignment: vi.fn(),
     assignMemoToUser: vi.fn(),
   },
 }));
@@ -347,6 +349,127 @@ describe('MemoService.listMemoAssignments', () => {
       new ForbiddenError('Memo not found or you do not have access to it'),
     );
     expect(memos.listMemoAssignments).not.toHaveBeenCalled();
+  });
+});
+
+describe('MemoService.removeAssignment', () => {
+  type Role = 'USER' | 'MOD' | 'ADMIN';
+  const NOT_ALLOWED = new ForbiddenError(
+    "Only the memo's ADMINs, its MODs (for USERs) and whoever assigned the user, with a role at least as high, can remove this assignment",
+  );
+  const AUTHOR_STAYS = new ForbiddenError("The memo's author can't be removed from it");
+
+  /** User 2's assignment, made by `assignedById` (the author, 99, by default). */
+  const target = (role: Role, assignedById = 99) => ({ userId: 2, assignedById, role });
+
+  /** Removes user 2's assignment as caller 1, with the given access and assignment. */
+  const remove = (access: object | null, assignment: object | null) => {
+    memos.findMemoAccess.mockResolvedValue(access as never);
+    memos.findAssignment.mockResolvedValue(assignment as never);
+    memos.removeAssignment.mockResolvedValue(1);
+    return memoService.removeAssignment('memo-uuid', 'bob-uuid', 1);
+  };
+
+  it.each(['USER', 'MOD', 'ADMIN'] as const)('lets an ADMIN remove a %s', async (role) => {
+    await remove(accessWithCallerRole('ADMIN'), target(role));
+
+    expect(memos.findAssignment).toHaveBeenCalledWith(10, 'bob-uuid');
+    expect(memos.removeAssignment).toHaveBeenCalledWith(10, 2);
+  });
+
+  it('lets a MOD remove a USER', async () => {
+    await remove(accessWithCallerRole('MOD'), target('USER'));
+
+    expect(memos.removeAssignment).toHaveBeenCalledWith(10, 2);
+  });
+
+  it.each([
+    ['MOD', 'MOD'],
+    ['MOD', 'ADMIN'],
+    ['USER', 'USER'],
+  ] as const)('forbids a %s from removing a %s someone else assigned', async (caller, role) => {
+    await expect(remove(accessWithCallerRole(caller), target(role))).rejects.toThrow(NOT_ALLOWED);
+    expect(memos.removeAssignment).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['USER', 'USER'],
+    ['MOD', 'USER'],
+    ['MOD', 'MOD'],
+    ['ADMIN', 'ADMIN'],
+  ] as const)('lets a %s remove a %s assignment they made', async (caller, role) => {
+    await remove(accessWithCallerRole(caller), target(role, 1));
+
+    expect(memos.removeAssignment).toHaveBeenCalledWith(10, 2);
+  });
+
+  it.each([
+    ['USER', 'MOD'],
+    ['USER', 'ADMIN'],
+    ['MOD', 'ADMIN'],
+  ] as const)(
+    'forbids a %s from removing a %s assignment they made, as that role is higher',
+    async (caller, role) => {
+      await expect(remove(accessWithCallerRole(caller), target(role, 1))).rejects.toThrow(
+        NOT_ALLOWED,
+      );
+      expect(memos.removeAssignment).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['USER', 'MOD', 'ADMIN'] as const)('lets a %s leave the memo', async (role) => {
+    await remove(accessWithCallerRole(role), { userId: 1, assignedById: 99, role });
+
+    expect(memos.removeAssignment).toHaveBeenCalledWith(10, 1);
+  });
+
+  it('forbids an ADMIN from removing the author’s assignment', async () => {
+    await expect(
+      remove(accessWithCallerRole('ADMIN'), { userId: 99, assignedById: 99, role: 'ADMIN' }),
+    ).rejects.toThrow(AUTHOR_STAYS);
+    expect(memos.removeAssignment).not.toHaveBeenCalled();
+  });
+
+  it.each(['USER', 'MOD', 'ADMIN'] as const)(
+    'forbids the author from leaving, even with the %s role',
+    async (role) => {
+      await expect(
+        remove(authorAccess(role), { userId: 1, assignedById: 1, role }),
+      ).rejects.toThrow(AUTHOR_STAYS);
+      expect(memos.removeAssignment).not.toHaveBeenCalled();
+    },
+  );
+
+  it('gives the author no extra say over others’ assignments', async () => {
+    await expect(remove(authorAccess('USER'), target('USER'))).rejects.toThrow(NOT_ALLOWED);
+  });
+
+  it('returns 404 when the user is not assigned', async () => {
+    await expect(remove(accessWithCallerRole('ADMIN'), null)).rejects.toThrow(
+      new NotFoundError('The user is not assigned to the memo'),
+    );
+    expect(memos.removeAssignment).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when the assignment disappears before it is removed', async () => {
+    memos.findMemoAccess.mockResolvedValue(accessWithCallerRole('ADMIN'));
+    memos.findAssignment.mockResolvedValue(target('USER'));
+    memos.removeAssignment.mockResolvedValue(0);
+
+    await expect(memoService.removeAssignment('memo-uuid', 'bob-uuid', 1)).rejects.toThrow(
+      new NotFoundError('The user is not assigned to the memo'),
+    );
+  });
+
+  it.each([
+    ['does not exist', null],
+    ['is not shared with the caller', accessWithCallerRole(null)],
+  ])('forbids removing from a memo that %s, before looking up the user', async (_l, access) => {
+    await expect(remove(access, target('USER'))).rejects.toThrow(
+      new ForbiddenError('Memo not found or you do not have access to it'),
+    );
+    expect(memos.findAssignment).not.toHaveBeenCalled();
+    expect(memos.removeAssignment).not.toHaveBeenCalled();
   });
 });
 

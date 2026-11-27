@@ -412,6 +412,39 @@ export function RegisterRoutes(app: Router) {
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsMemosController_removeMemoAssignment: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                memoUuid: {"in":"path","name":"memoUuid","required":true,"dataType":"string"},
+                userUuid: {"in":"path","name":"userUuid","required":true,"dataType":"string"},
+        };
+        app.delete('/memos/:memoUuid/assignments/:userUuid',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(MemosController)),
+            ...(fetchMiddlewares<RequestHandler>(MemosController.prototype.removeMemoAssignment)),
+
+            async function MemosController_removeMemoAssignment(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsMemosController_removeMemoAssignment, request, response, next });
+
+                const controller = new MemosController();
+
+              await templateService.apiHandler({
+                methodName: 'removeMemoAssignment',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsMemosController_updateMemo: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 memoUuid: {"in":"path","name":"memoUuid","required":true,"dataType":"string"},
