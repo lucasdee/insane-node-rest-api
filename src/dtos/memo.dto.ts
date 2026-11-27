@@ -19,6 +19,13 @@ export class Memo {
   @Example('5f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b')
   authorUuid!: string;
 
+  @Example('alice')
+  authorUsername!: string;
+
+  /** The author's display name, or null if they have not set one. */
+  @Example('Alice')
+  authorDisplayName!: string | null;
+
   @Example('2024-01-01T00:00:00.000Z')
   createdAt!: Date;
 

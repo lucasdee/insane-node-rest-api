@@ -17,7 +17,7 @@ export const publicMemoSelect = {
   title: true,
   content: true,
   createdAt: true,
-  author: { select: { uuid: true } },
+  author: { select: { uuid: true, username: true, displayName: true } },
   tags: { select: { tag: { select: { name: true } } } },
 } satisfies MemoSelect;
 

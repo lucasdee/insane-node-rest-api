@@ -32,7 +32,7 @@ const publicMemo = {
   title: 'Title',
   content: 'Content',
   createdAt,
-  author: { uuid: 'alice-uuid' },
+  author: { uuid: 'alice-uuid', username: 'alice', displayName: 'Alice' },
   tags: [] as { tag: { name: string } }[],
 };
 
@@ -42,6 +42,8 @@ const memoDto = {
   title: 'Title',
   content: 'Content',
   authorUuid: 'alice-uuid',
+  authorUsername: 'alice',
+  authorDisplayName: 'Alice',
   createdAt,
   tags: [] as string[],
 };
