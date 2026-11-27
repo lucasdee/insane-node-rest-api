@@ -44,7 +44,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 beforeEach(() => {
   resetFakeDb();
-  alice = seedUser({ username: 'alice' });
+  alice = seedUser({ username: 'alice', displayName: 'Alice' });
   bob = seedUser({ username: 'bob' });
   carol = seedUser({ username: 'carol' });
 });
@@ -79,6 +79,27 @@ describe('GET /memos', () => {
     expect(res.body).toHaveLength(1);
     expect(res.body[0].memo.title).toBe('Alice memo');
   });
+
+  it('shows assignees who wrote the memo', async () => {
+    const memoUuid = await memoBy(alice);
+    await assign(alice, memoUuid, bob.uuid);
+
+    const res = await listMemos(bob);
+
+    expect(res.body[0].memo).toMatchObject({
+      authorUuid: alice.uuid,
+      authorUsername: 'alice',
+      authorDisplayName: 'Alice',
+    });
+  });
+
+  it('returns a null display name for authors without one', async () => {
+    await createMemo(bob, 'Bob memo');
+
+    const res = await listMemos(bob);
+
+    expect(res.body[0].memo).toMatchObject({ authorUsername: 'bob', authorDisplayName: null });
+  });
 });
 
 describe('POST /memos/create', () => {
@@ -91,6 +112,8 @@ describe('POST /memos/create', () => {
       title: 'Shopping',
       content: 'Milk, eggs',
       authorUuid: alice.uuid,
+      authorUsername: alice.username,
+      authorDisplayName: alice.displayName,
     });
 
     const list = await listMemos(alice);
@@ -376,7 +399,16 @@ describe('POST /memos/assign', () => {
 });
 
 describe('memo data exposure', () => {
-  const MEMO_FIELDS = ['authorUuid', 'content', 'createdAt', 'tags', 'title', 'uuid'];
+  const MEMO_FIELDS = [
+    'authorDisplayName',
+    'authorUsername',
+    'authorUuid',
+    'content',
+    'createdAt',
+    'tags',
+    'title',
+    'uuid',
+  ];
   const MEMO_ON_USER_FIELDS = ['assignedAt', 'assignedByUuid', 'memoUuid', 'role', 'userUuid'];
 
   /** Fails if any numeric value, such as an internal id, appears anywhere in the body. */

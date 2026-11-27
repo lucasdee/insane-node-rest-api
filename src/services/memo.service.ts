@@ -16,6 +16,8 @@ const toMemo = (memo: PublicMemo): Memo => ({
   title: memo.title,
   content: memo.content,
   authorUuid: memo.author.uuid,
+  authorUsername: memo.author.username,
+  authorDisplayName: memo.author.displayName,
   createdAt: memo.createdAt,
   tags: memo.tags.map((t) => t.tag.name).sort(),
 });

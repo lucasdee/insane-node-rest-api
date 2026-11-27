@@ -61,6 +61,8 @@ const models: TsoaRoute.Models = {
             "title": {"dataType":"string","required":true},
             "content": {"dataType":"string","required":true},
             "authorUuid": {"dataType":"string","required":true},
+            "authorUsername": {"dataType":"string","required":true},
+            "authorDisplayName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "createdAt": {"dataType":"datetime","required":true},
             "tags": {"dataType":"array","array":{"dataType":"string"},"required":true},
         },
