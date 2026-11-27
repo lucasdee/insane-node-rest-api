@@ -40,7 +40,66 @@ export const normalizeTags = (tags: string[] = []): string[] => [
   ...new Set(tags.map((tag) => tag.trim().toLowerCase())),
 ];
 
+const NO_ACCESS = 'Memo not found or you do not have access to it';
+
+/** What the caller may do with a memo: its internal id, their role on it, and authorship. */
+type CallerAccess = { id: number; role?: Role; isAuthor: boolean };
+
+/** A memo's author and its MODs and ADMINs may change its title, content and tags. */
+const canEdit = ({ role, isAuthor }: CallerAccess) =>
+  isAuthor || role === Role.MOD || role === Role.ADMIN;
+
 export class MemoService {
+  /**
+   * Looks up the caller's access to a memo. Callers who are neither assigned to it nor
+   * its author get the same answer as for a missing memo, so the API doesn't reveal
+   * which memo uuids exist.
+   */
+  private async requireAccess(memoUuid: string, userId: number): Promise<CallerAccess> {
+    const memo = await memoRepository.findMemoAccess(memoUuid, userId);
+    const role = memo?.users[0]?.role;
+    const isAuthor = memo?.authorId === userId;
+    if (!memo || (!role && !isAuthor)) {
+      throw new ForbiddenError(NO_ACCESS);
+    }
+    return { id: memo.id, role, isAuthor };
+  }
+
+  /** The caller's assignment to a memo, with the memo. */
+  async getMemo(memoUuid: string, userId: number): Promise<MemoOnUser> {
+    const link = await memoRepository.findUserMemo(memoUuid, userId);
+    if (!link) {
+      throw new ForbiddenError(NO_ACCESS);
+    }
+    return toMemoOnUserWithMemo(link);
+  }
+
+  /**
+   * Changes a memo's title, content and tags; fields left out stay as they are, and
+   * given tags replace all current ones. Only the memo's author, MODs and ADMINs may
+   * do this.
+   */
+  async updateMemo(
+    memoUuid: string,
+    changes: { title?: string; content?: string; tags?: string[] },
+    userId: number,
+  ): Promise<Memo> {
+    const access = await this.requireAccess(memoUuid, userId);
+    if (!canEdit(access)) {
+      throw new ForbiddenError("Only the memo's author, ADMINs and MODs can edit it");
+    }
+
+    const { title, content, tags } = changes;
+    return toMemo(
+      await memoRepository.updateMemo(access.id, {
+        title,
+        content,
+        // Undefined keeps the tags, while an empty list removes them all.
+        tagNames: tags === undefined ? undefined : normalizeTags(tags),
+      }),
+    );
+  }
+
   /**
    * Lists the user's memos. With tags, only memos carrying `all` of them (the
    * default) or `any` one of them.
@@ -75,20 +134,14 @@ export class MemoService {
     );
   }
 
-  /** Replaces a memo's tags. Only the memo's ADMINs and MODs may do this. */
+  /** Replaces a memo's tags. Only the memo's author, ADMINs and MODs may do this. */
   async replaceMemoTags(memoUuid: string, tags: string[], userId: number): Promise<Memo> {
-    // Callers without any role on the memo get the same answer as for a missing one,
-    // so the endpoint doesn't reveal which memo uuids exist.
-    const memo = await memoRepository.findMemoAccess(memoUuid, userId);
-    const callerRole = memo?.users[0]?.role;
-    if (!memo || !callerRole) {
-      throw new ForbiddenError('Memo not found or you do not have access to it');
-    }
-    if (callerRole === Role.USER) {
-      throw new ForbiddenError("Only the memo's ADMINs and MODs can change its tags");
+    const access = await this.requireAccess(memoUuid, userId);
+    if (!canEdit(access)) {
+      throw new ForbiddenError("Only the memo's author, ADMINs and MODs can change its tags");
     }
 
-    return toMemo(await memoRepository.replaceMemoTags(memo.id, normalizeTags(tags)));
+    return toMemo(await memoRepository.updateMemo(access.id, { tagNames: normalizeTags(tags) }));
   }
 
   async assignMemoToUser(
@@ -102,7 +155,7 @@ export class MemoService {
     const memo = await memoRepository.findMemoAccess(memoUuid, assignedById);
     const callerRole = memo?.users[0]?.role;
     if (!memo || !callerRole) {
-      throw new ForbiddenError('Memo not found or you do not have access to it');
+      throw new ForbiddenError(NO_ACCESS);
     }
 
     // A memo's ADMINs can share it with any role, its MODs only as USER.

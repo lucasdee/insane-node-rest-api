@@ -183,6 +183,31 @@ describe('PUT /memos/{memoUuid}/tags', () => {
   });
 });
 
+describe('PATCH /memos/{memoUuid}', () => {
+  const patch = (body: object) =>
+    request(app)
+      .patch('/memos/123e4567-e89b-12d3-a456-426614174000')
+      .set('Authorization', bearer(1))
+      .send(body);
+
+  it.each([
+    ['a title shorter than 3 characters', { title: 'ab' }, 'body.title'],
+    ['a title longer than 128 characters', { title: 'a'.repeat(129) }, 'body.title'],
+    ['a non-string title', { title: 42 }, 'body.title'],
+    ['content shorter than 3 characters', { content: 'ab' }, 'body.content'],
+    ['content longer than 10000 characters', { content: 'a'.repeat(10_001) }, 'body.content'],
+    ['more than 10 tags', { tags: tagList(11) }, 'body.tags'],
+    ['a tag with a space', { tags: ['has space'] }, 'body.tags.$0'],
+    ['an unknown property', { title: 'Title', authorId: 2 }, 'body.authorId'],
+  ])('returns 422 for %s', async (_label, body, field) => {
+    const res = await patch(body);
+
+    expect(res.status).toBe(422);
+    expect(res.body.message).toBe('Validation failed');
+    expect(Object.keys(res.body.details)).toContain(field);
+  });
+});
+
 describe('GET /memos query', () => {
   const get = (query: string) =>
     request(app).get(`/memos?${query}`).set('Authorization', bearer(1));

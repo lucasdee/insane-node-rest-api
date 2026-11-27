@@ -9,7 +9,7 @@ import {
 const { prisma } = vi.hoisted(() => ({
   prisma: {
     memo: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
-    memoOnUser: { create: vi.fn(), findMany: vi.fn() },
+    memoOnUser: { create: vi.fn(), findMany: vi.fn(), findFirst: vi.fn() },
     tag: { createMany: vi.fn(), findMany: vi.fn() },
   },
 }));
@@ -109,14 +109,29 @@ describe('MemoRepository', () => {
     });
   });
 
-  it('findMemoAccess looks the memo up by uuid with only the given user’s role', async () => {
-    const access = { id: 10, users: [{ role: 'ADMIN' }] };
+  it('findMemoAccess looks the memo up by uuid with its author and only the given user’s role', async () => {
+    const access = { id: 10, authorId: 1, users: [{ role: 'ADMIN' }] };
     prisma.memo.findUnique.mockResolvedValue(access);
 
     expect(await memoRepository.findMemoAccess('n-uuid', 1)).toBe(access);
     expect(prisma.memo.findUnique).toHaveBeenCalledWith({
       where: { uuid: 'n-uuid' },
-      select: { id: true, users: { where: { userId: 1 }, select: { role: true } } },
+      select: {
+        id: true,
+        authorId: true,
+        users: { where: { userId: 1 }, select: { role: true } },
+      },
+    });
+  });
+
+  it('findUserMemo looks up the user’s own assignment to the memo, with the public memo', async () => {
+    const link = { role: 'MOD' };
+    prisma.memoOnUser.findFirst.mockResolvedValue(link);
+
+    expect(await memoRepository.findUserMemo('n-uuid', 1)).toBe(link);
+    expect(prisma.memoOnUser.findFirst).toHaveBeenCalledWith({
+      where: { userId: 1, memo: { uuid: 'n-uuid' } },
+      select: publicMemoOnUserWithMemoSelect,
     });
   });
 
@@ -164,10 +179,10 @@ describe('MemoRepository', () => {
     );
   });
 
-  it('replaceMemoTags removes all current tags and links the new ones', async () => {
+  it('updateMemo with tags removes all current tags and links the new ones', async () => {
     prisma.memo.update.mockResolvedValue({ uuid: 'n-uuid' });
 
-    await memoRepository.replaceMemoTags(10, ['home']);
+    await memoRepository.updateMemo(10, { tagNames: ['home'] });
 
     expect(prisma.tag.createMany).toHaveBeenCalledWith({
       data: [{ name: 'home' }],
@@ -175,9 +190,39 @@ describe('MemoRepository', () => {
     });
     expect(prisma.memo.update).toHaveBeenCalledWith({
       where: { id: 10 },
-      data: { tags: { deleteMany: {}, create: [{ tag: { connect: { name: 'home' } } }] } },
+      data: {
+        title: undefined,
+        content: undefined,
+        tags: { deleteMany: {}, create: [{ tag: { connect: { name: 'home' } } }] },
+      },
       select: publicMemoSelect,
     });
+    expect(prisma.tag.createMany.mock.invocationCallOrder[0]).toBeLessThan(
+      prisma.memo.update.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('updateMemo with an empty tag list removes all tags', async () => {
+    prisma.memo.update.mockResolvedValue({ uuid: 'n-uuid' });
+
+    await memoRepository.updateMemo(10, { tagNames: [] });
+
+    expect(prisma.tag.createMany).not.toHaveBeenCalled();
+    expect(prisma.memo.update.mock.calls[0][0].data).toHaveProperty('tags', {
+      deleteMany: {},
+      create: [],
+    });
+  });
+
+  it('updateMemo without tags changes only the title and content', async () => {
+    prisma.memo.update.mockResolvedValue({ uuid: 'n-uuid' });
+
+    await memoRepository.updateMemo(10, { title: 'New title', content: 'New content' });
+
+    expect(prisma.tag.createMany).not.toHaveBeenCalled();
+    const { data } = prisma.memo.update.mock.calls[0][0];
+    expect(data).toEqual({ title: 'New title', content: 'New content' });
+    expect(data).not.toHaveProperty('tags');
   });
 
   it('assignMemoToUser records who made the assignment and the role, and returns only public fields', async () => {

@@ -25,6 +25,21 @@ const createMemo = (user: UserRow, title = 'Shopping', content = 'Milk, eggs', t
 const putTags = (user: UserRow, memoUuid: string, tags: string[]) =>
   request(app).put(`/memos/${memoUuid}/tags`).set('Authorization', bearer(user.id)).send({ tags });
 
+const getMemo = (user: UserRow, memoUuid: string) =>
+  request(app).get(`/memos/${memoUuid}`).set('Authorization', bearer(user.id));
+
+const patchMemo = (
+  user: UserRow,
+  memoUuid: string,
+  changes: { title?: string; content?: string; tags?: string[] },
+) => request(app).patch(`/memos/${memoUuid}`).set('Authorization', bearer(user.id)).send(changes);
+
+/** Sets the user's role on the memo directly, e.g. to demote a memo's author. */
+const setRole = (user: UserRow, memoUuid: string, role: Role) => {
+  const memo = fakeDb.memos.find((m) => m.uuid === memoUuid)!;
+  fakeDb.memosOnUsers.find((l) => l.memoId === memo.id && l.userId === user.id)!.role = role;
+};
+
 /** The titles of the user's memos matching `query`, sorted. */
 const titles = async (user: UserRow, query: string) =>
   (await listMemos(user, query)).body.map((l: { memo: { title: string } }) => l.memo.title).sort();
@@ -55,8 +70,10 @@ describe('authentication', () => {
     ['POST', '/memos/create'],
     ['POST', '/memos/assign'],
     ['PUT', `/memos/${randomUUID()}/tags`],
+    ['GET', `/memos/${randomUUID()}`],
+    ['PATCH', `/memos/${randomUUID()}`],
   ])('%s %s returns 401 without a token', async (method, path) => {
-    const res = await request(app)[method.toLowerCase() as 'get' | 'post' | 'put'](path);
+    const res = await request(app)[method.toLowerCase() as 'get' | 'post' | 'put' | 'patch'](path);
 
     expect(res.status).toBe(401);
   });
@@ -248,8 +265,20 @@ describe('PUT /memos/{memoUuid}/tags', () => {
     const res = await putTags(bob, memoUuid, ['work']);
 
     expect(res.status).toBe(403);
-    expect(res.body).toEqual({ message: "Only the memo's ADMINs and MODs can change its tags" });
+    expect(res.body).toEqual({
+      message: "Only the memo's author, ADMINs and MODs can change its tags",
+    });
     expect(await titles(alice, '?tags=home')).toEqual(['Memo']);
+  });
+
+  it('lets the author change the tags even with the USER role on the memo', async () => {
+    const memoUuid = (await createMemo(alice, 'Memo', 'Content', ['home'])).body.uuid;
+    setRole(alice, memoUuid, 'USER');
+
+    const res = await putTags(alice, memoUuid, ['work']);
+
+    expect(res.status).toBe(200);
+    expect(res.body.tags).toEqual(['work']);
   });
 
   it('forbids changing the tags of a memo the caller has no access to', async () => {
@@ -263,6 +292,146 @@ describe('PUT /memos/{memoUuid}/tags', () => {
 
   it('returns 403 for a memo that does not exist, without revealing that', async () => {
     const res = await putTags(alice, randomUUID(), ['work']);
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ message: 'Memo not found or you do not have access to it' });
+  });
+});
+
+describe('GET /memos/{memoUuid}', () => {
+  it('returns the caller’s assignment with the memo', async () => {
+    const memoUuid = (await createMemo(alice, 'Memo', 'Content', ['home'])).body.uuid;
+    await assign(alice, memoUuid, bob.uuid, 'MOD');
+
+    const res = await getMemo(bob, memoUuid);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      memoUuid,
+      userUuid: bob.uuid,
+      assignedByUuid: alice.uuid,
+      role: 'MOD',
+      memo: {
+        uuid: memoUuid,
+        title: 'Memo',
+        content: 'Content',
+        authorUuid: alice.uuid,
+        authorUsername: 'alice',
+        tags: ['home'],
+      },
+    });
+  });
+
+  it('forbids reading a memo the caller is not assigned to', async () => {
+    const memoUuid = await memoBy(alice);
+
+    const res = await getMemo(bob, memoUuid);
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ message: 'Memo not found or you do not have access to it' });
+  });
+
+  it('returns 403 for a memo that does not exist, without revealing that', async () => {
+    const res = await getMemo(alice, randomUUID());
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ message: 'Memo not found or you do not have access to it' });
+  });
+});
+
+describe('PATCH /memos/{memoUuid}', () => {
+  it('lets the author change the title, content and tags', async () => {
+    const memoUuid = (await createMemo(alice, 'Memo', 'Content', ['old'])).body.uuid;
+
+    const res = await patchMemo(alice, memoUuid, {
+      title: 'Edited',
+      content: 'New content',
+      tags: ['New', 'new', 'other'],
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      uuid: memoUuid,
+      title: 'Edited',
+      content: 'New content',
+      authorUuid: alice.uuid,
+      tags: ['new', 'other'],
+    });
+    expect((await getMemo(alice, memoUuid)).body.memo).toMatchObject({
+      title: 'Edited',
+      content: 'New content',
+      tags: ['new', 'other'],
+    });
+  });
+
+  it('lets the author edit even with the USER role on the memo', async () => {
+    const memoUuid = await memoBy(alice);
+    setRole(alice, memoUuid, 'USER');
+
+    const res = await patchMemo(alice, memoUuid, { title: 'Edited' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.title).toBe('Edited');
+  });
+
+  it.each(['ADMIN', 'MOD'] as const)('lets a %s edit someone else’s memo', async (role) => {
+    const memoUuid = await memoBy(alice);
+    await assign(alice, memoUuid, bob.uuid, role);
+
+    const res = await patchMemo(bob, memoUuid, { content: 'Edited by Bob' });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ content: 'Edited by Bob', authorUuid: alice.uuid });
+  });
+
+  it('changes only the given fields', async () => {
+    const memoUuid = (await createMemo(alice, 'Memo', 'Content', ['home'])).body.uuid;
+
+    const res = await patchMemo(alice, memoUuid, { title: 'Edited' });
+
+    expect(res.body).toMatchObject({ title: 'Edited', content: 'Content', tags: ['home'] });
+  });
+
+  it('clears the tags when given an empty list', async () => {
+    const memoUuid = (await createMemo(alice, 'Memo', 'Content', ['home'])).body.uuid;
+
+    const res = await patchMemo(alice, memoUuid, { tags: [] });
+
+    expect(res.body.tags).toEqual([]);
+    expect(fakeDb.memosOnTags).toHaveLength(0);
+  });
+
+  it('returns the memo unchanged for an empty body', async () => {
+    const created = (await createMemo(alice, 'Memo', 'Content', ['home'])).body;
+
+    const res = await patchMemo(alice, created.uuid, {});
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(created);
+  });
+
+  it('forbids a USER on the memo who is not its author', async () => {
+    const memoUuid = await memoBy(alice);
+    await assign(alice, memoUuid, bob.uuid);
+
+    const res = await patchMemo(bob, memoUuid, { title: 'Edited' });
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ message: "Only the memo's author, ADMINs and MODs can edit it" });
+    expect((await getMemo(alice, memoUuid)).body.memo.title).toBe('Shopping');
+  });
+
+  it('forbids editing a memo the caller has no access to', async () => {
+    const memoUuid = await memoBy(alice);
+
+    const res = await patchMemo(bob, memoUuid, { title: 'Edited' });
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ message: 'Memo not found or you do not have access to it' });
+  });
+
+  it('returns 403 for a memo that does not exist, without revealing that', async () => {
+    const res = await patchMemo(alice, randomUUID(), { title: 'Edited' });
 
     expect(res.status).toBe(403);
     expect(res.body).toEqual({ message: 'Memo not found or you do not have access to it' });
@@ -437,6 +606,24 @@ describe('memo data exposure', () => {
     const res = await putTags(alice, await memoBy(alice), ['home']);
 
     expect(Object.keys(res.body).sort()).toEqual(MEMO_FIELDS);
+    expectNoNumbers(res.body);
+  });
+
+  it('PATCH /memos/{memoUuid} returns only public memo fields', async () => {
+    const res = await patchMemo(alice, await memoBy(alice), { title: 'Edited', tags: ['home'] });
+
+    expect(Object.keys(res.body).sort()).toEqual(MEMO_FIELDS);
+    expectNoNumbers(res.body);
+  });
+
+  it('GET /memos/{memoUuid} returns only public assignment and memo fields', async () => {
+    const res = await getMemo(
+      alice,
+      (await createMemo(alice, 'Memo', 'Content', ['home'])).body.uuid,
+    );
+
+    expect(Object.keys(res.body).sort()).toEqual([...MEMO_ON_USER_FIELDS, 'memo'].sort());
+    expect(Object.keys(res.body.memo).sort()).toEqual(MEMO_FIELDS);
     expectNoNumbers(res.body);
   });
 
