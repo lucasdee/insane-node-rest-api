@@ -163,6 +163,7 @@ A memo is shared by assigning users to it, each with a role on that memo: `USER`
 | Action                       | Author        | ADMIN    | MOD            | USER |
 | ---------------------------- | ------------- | -------- | -------------- | ---- |
 | Read                         | yes           | yes      | yes            | yes  |
+| See who it's shared with     | yes           | yes      | yes            | yes  |
 | Edit title, content and tags | yes           | yes      | yes            | no   |
 | Delete                       | yes           | yes      | no             | no   |
 | Assign other users           | by their role | any role | only as `USER` | no   |
@@ -177,6 +178,7 @@ The author's right to edit and delete doesn't depend on their role, so they keep
 - `PATCH /memos/{memoUuid}` changes a memo's `title`, `content` and `tags`, and returns the memo. Fields left out stay as they are. Tags you send replace all current ones, and `tags: []` removes them all.
 - `DELETE /memos/{memoUuid}` deletes a memo for everyone it is assigned to and returns 204. Its assignments and tag links are deleted with it; the tags themselves stay, as other memos may use them.
 - `PUT /memos/{memoUuid}/tags` replaces all of a memo's tags.
+- `GET /memos/{memoUuid}/assignments` lists everyone a memo is assigned to, oldest assignment first (so the author usually comes first). Each entry has the assignee's `userUuid`, `username`, `displayName` and `role` on the memo, `assignedAt`, and the same three fields for whoever assigned them (`assignedByUuid`, `assignedByUsername`, `assignedByDisplayName`). Email addresses and global roles are never included.
 - `POST /memos/assign` assigns a memo to another user, given `memoUuid`, `userUuid` and an optional `role` (`USER` by default), and returns 201. It returns 404 if the user doesn't exist, and 409 if they are already assigned.
 
 A memo in a response has `uuid`, `title`, `content`, `authorUuid`, `authorUsername`, `authorDisplayName` (null if the author has none), `createdAt` and `tags`. Tags are stored lowercased and returned sorted.

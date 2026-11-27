@@ -121,6 +121,38 @@ export interface MemoCreateRequest {
   tags?: TagName[];
 }
 
+/** A user a memo is assigned to, with their role on it and who assigned them. */
+export interface MemoAssignment {
+  /** @example "9b2d7c1e-4f3a-4b6c-9d8e-7f6a5b4c3d2e" */
+  userUuid: string;
+  /** @example "bob" */
+  username: string;
+  /**
+   * The assignee's display name, or null if they have not set one.
+   * @example "Bob"
+   */
+  displayName: string | null;
+  /**
+   * The assignee's role on the memo, not their global role.
+   * @example "USER"
+   */
+  role: "USER" | "MOD" | "ADMIN";
+  /**
+   * @format date-time
+   * @example "2024-01-01T00:00:00.000Z"
+   */
+  assignedAt: string;
+  /** @example "5f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b" */
+  assignedByUuid: string;
+  /** @example "alice" */
+  assignedByUsername: string;
+  /**
+   * The display name of whoever assigned the user, or null if they have not set one.
+   * @example "Alice"
+   */
+  assignedByDisplayName: string | null;
+}
+
 /** Changes to a memo. Fields left out stay as they are. */
 export interface MemoUpdateRequest {
   /**
@@ -675,6 +707,23 @@ export class Api<
         path: `/memos/${memoUuid}`,
         method: "DELETE",
         secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Lists everyone a memo is assigned to, with their role on it and who assigned them, oldest assignment first. Anyone with access to the memo can do this.
+     *
+     * @tags Memos
+     * @name ListMemoAssignments
+     * @request GET:/memos/{memoUuid}/assignments
+     * @secure
+     */
+    listMemoAssignments: (memoUuid: string, params: RequestParams = {}) =>
+      this.request<MemoAssignment[], void>({
+        path: `/memos/${memoUuid}/assignments`,
+        method: "GET",
+        secure: true,
+        format: "json",
         ...params,
       }),
 

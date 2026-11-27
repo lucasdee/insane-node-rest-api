@@ -19,6 +19,7 @@ import { AuthenticatedRequest } from './types';
 import { memoService } from '../services/memo.service';
 import {
   Memo,
+  MemoAssignment,
   MemoOnUser,
   MemoCreateRequest,
   MemoOnUserCreateRequest,
@@ -65,6 +66,20 @@ export class MemosController extends Controller {
     @Path() memoUuid: string,
   ): Promise<MemoOnUser> {
     return await memoService.getMemo(memoUuid, req.user!.userId);
+  }
+
+  /**
+   * Lists everyone a memo is assigned to, with their role on it and who assigned them,
+   * oldest assignment first. Anyone with access to the memo can do this.
+   */
+  @Get('{memoUuid}/assignments')
+  @Security('jwt')
+  @Response(403, 'Memo not found or you do not have access to it')
+  public async listMemoAssignments(
+    @Request() req: AuthenticatedRequest,
+    @Path() memoUuid: string,
+  ): Promise<MemoAssignment[]> {
+    return await memoService.listMemoAssignments(memoUuid, req.user!.userId);
   }
 
   /**

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   memoRepository,
+  publicMemoAssignmentSelect,
   publicMemoOnUserSelect,
   publicMemoOnUserWithMemoSelect,
   publicMemoSelect,
@@ -40,6 +41,16 @@ describe('public memo selects', () => {
     expect(publicMemoOnUserWithMemoSelect).toEqual({
       ...publicMemoOnUserSelect,
       memo: { select: publicMemoSelect },
+    });
+  });
+
+  it('select only user summaries for a memo’s assignees, never emails or roles', () => {
+    const summary = { select: { uuid: true, username: true, displayName: true } };
+    expect(publicMemoAssignmentSelect).toEqual({
+      role: true,
+      assignedAt: true,
+      user: summary,
+      assignedBy: summary,
     });
   });
 });
@@ -94,6 +105,17 @@ describe('MemoRepository', () => {
     expect(prisma.memoOnUser.findMany).toHaveBeenCalledWith({
       where: { userId: 1, memo: { tags: { some: { tag: { name: { in: ['a', 'b'] } } } } } },
       select: publicMemoOnUserWithMemoSelect,
+    });
+  });
+
+  it('listMemoAssignments returns the memo’s assignments with user summaries', async () => {
+    prisma.memoOnUser.findMany.mockResolvedValue([]);
+
+    await memoRepository.listMemoAssignments(10);
+
+    expect(prisma.memoOnUser.findMany).toHaveBeenCalledWith({
+      where: { memoId: 10 },
+      select: publicMemoAssignmentSelect,
     });
   });
 

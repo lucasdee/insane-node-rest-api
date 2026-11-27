@@ -1,5 +1,6 @@
 import { prisma } from '../config/db';
 import { Role } from '../generated/prisma/enums';
+import { userSummarySelect } from './user.repository';
 import {
   MemoGetPayload,
   MemoOnUserGetPayload,
@@ -34,10 +35,21 @@ export const publicMemoOnUserWithMemoSelect = {
   memo: { select: publicMemoSelect },
 } satisfies MemoOnUserSelect;
 
+/** A memo's assignee and who assigned them, with only what other users may see of them. */
+export const publicMemoAssignmentSelect = {
+  role: true,
+  assignedAt: true,
+  user: { select: userSummarySelect },
+  assignedBy: { select: userSummarySelect },
+} satisfies MemoOnUserSelect;
+
 export type PublicMemo = MemoGetPayload<{ select: typeof publicMemoSelect }>;
 export type PublicMemoOnUser = MemoOnUserGetPayload<{ select: typeof publicMemoOnUserSelect }>;
 export type PublicMemoOnUserWithMemo = MemoOnUserGetPayload<{
   select: typeof publicMemoOnUserWithMemoSelect;
+}>;
+export type PublicMemoAssignment = MemoOnUserGetPayload<{
+  select: typeof publicMemoAssignmentSelect;
 }>;
 
 /** A memo's internal id, its author's id and the given user's role on it, if they have one. */
@@ -102,6 +114,14 @@ export class MemoRepository {
           select: { role: true },
         },
       },
+    });
+  }
+
+  /** Everyone the memo is assigned to, in no particular order. */
+  async listMemoAssignments(memoId: number): Promise<PublicMemoAssignment[]> {
+    return prisma.memoOnUser.findMany({
+      where: { memoId },
+      select: publicMemoAssignmentSelect,
     });
   }
 

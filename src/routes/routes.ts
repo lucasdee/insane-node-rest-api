@@ -97,6 +97,21 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "MemoAssignment": {
+        "dataType": "refObject",
+        "properties": {
+            "userUuid": {"dataType":"string","required":true},
+            "username": {"dataType":"string","required":true},
+            "displayName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "role": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["USER"]},{"dataType":"enum","enums":["MOD"]},{"dataType":"enum","enums":["ADMIN"]}],"required":true},
+            "assignedAt": {"dataType":"datetime","required":true},
+            "assignedByUuid": {"dataType":"string","required":true},
+            "assignedByUsername": {"dataType":"string","required":true},
+            "assignedByDisplayName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "MemoUpdateRequest": {
         "dataType": "refObject",
         "properties": {
@@ -354,6 +369,38 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'getMemo',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsMemosController_listMemoAssignments: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                memoUuid: {"in":"path","name":"memoUuid","required":true,"dataType":"string"},
+        };
+        app.get('/memos/:memoUuid/assignments',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(MemosController)),
+            ...(fetchMiddlewares<RequestHandler>(MemosController.prototype.listMemoAssignments)),
+
+            async function MemosController_listMemoAssignments(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsMemosController_listMemoAssignments, request, response, next });
+
+                const controller = new MemosController();
+
+              await templateService.apiHandler({
+                methodName: 'listMemoAssignments',
                 controller,
                 response,
                 next,

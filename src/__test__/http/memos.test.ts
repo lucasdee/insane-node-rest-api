@@ -55,6 +55,9 @@ const assign = (by: UserRow, memoUuid: string, userUuid: string, role?: Role) =>
     .set('Authorization', bearer(by.id))
     .send({ memoUuid, userUuid, role });
 
+const listAssignments = (user: UserRow, memoUuid: string) =>
+  request(app).get(`/memos/${memoUuid}/assignments`).set('Authorization', bearer(user.id));
+
 /** Creates a memo as `author` and returns its uuid. */
 const memoBy = async (author: UserRow): Promise<string> => (await createMemo(author)).body.uuid;
 
@@ -655,6 +658,126 @@ describe('POST /memos/assign', () => {
   });
 });
 
+describe('GET /memos/{memoUuid}/assignments', () => {
+  /** Moves the user's assignment to the memo to the given time. */
+  const setAssignedAt = (user: UserRow, memoUuid: string, iso: string) => {
+    const memo = fakeDb.memos.find((m) => m.uuid === memoUuid)!;
+    fakeDb.memosOnUsers.find((l) => l.memoId === memo.id && l.userId === user.id)!.assignedAt =
+      new Date(iso);
+  };
+
+  it('lists every assignee with names, roles and who assigned them, oldest first', async () => {
+    const memoUuid = await memoBy(alice);
+    await assign(alice, memoUuid, carol.uuid, 'MOD');
+    await assign(carol, memoUuid, bob.uuid);
+    setAssignedAt(alice, memoUuid, '2026-01-01T00:00:00.000Z');
+    setAssignedAt(carol, memoUuid, '2026-01-02T00:00:00.000Z');
+    setAssignedAt(bob, memoUuid, '2026-01-03T00:00:00.000Z');
+
+    const res = await listAssignments(alice, memoUuid);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([
+      {
+        userUuid: alice.uuid,
+        username: 'alice',
+        displayName: 'Alice',
+        role: 'ADMIN',
+        assignedAt: '2026-01-01T00:00:00.000Z',
+        assignedByUuid: alice.uuid,
+        assignedByUsername: 'alice',
+        assignedByDisplayName: 'Alice',
+      },
+      {
+        userUuid: carol.uuid,
+        username: 'carol',
+        displayName: null,
+        role: 'MOD',
+        assignedAt: '2026-01-02T00:00:00.000Z',
+        assignedByUuid: alice.uuid,
+        assignedByUsername: 'alice',
+        assignedByDisplayName: 'Alice',
+      },
+      {
+        userUuid: bob.uuid,
+        username: 'bob',
+        displayName: null,
+        role: 'USER',
+        assignedAt: '2026-01-03T00:00:00.000Z',
+        assignedByUuid: carol.uuid,
+        assignedByUsername: 'carol',
+        assignedByDisplayName: null,
+      },
+    ]);
+  });
+
+  it('orders assignments made at the same time by username', async () => {
+    const memoUuid = await memoBy(alice);
+    await assign(alice, memoUuid, carol.uuid);
+    await assign(alice, memoUuid, bob.uuid);
+    for (const user of [alice, bob, carol]) setAssignedAt(user, memoUuid, '2026-01-01T00:00:00Z');
+
+    const res = await listAssignments(alice, memoUuid);
+
+    expect(res.body.map((a: { username: string }) => a.username)).toEqual([
+      'alice',
+      'bob',
+      'carol',
+    ]);
+  });
+
+  it('lets a USER on the memo see who else it is shared with', async () => {
+    const memoUuid = await memoBy(alice);
+    await assign(alice, memoUuid, bob.uuid);
+    await assign(alice, memoUuid, carol.uuid, 'MOD');
+
+    const res = await listAssignments(bob, memoUuid);
+
+    expect(res.status).toBe(200);
+    expect(res.body.map((a: { userUuid: string }) => a.userUuid).sort()).toEqual(
+      [alice.uuid, bob.uuid, carol.uuid].sort(),
+    );
+  });
+
+  it('lets the author see the list even without an assignment of their own', async () => {
+    const memoUuid = await memoBy(alice);
+    await assign(alice, memoUuid, bob.uuid, 'ADMIN');
+    const memo = fakeDb.memos.find((m) => m.uuid === memoUuid)!;
+    const own = fakeDb.memosOnUsers.findIndex((l) => l.memoId === memo.id && l.userId === alice.id);
+    fakeDb.memosOnUsers.splice(own, 1);
+
+    const res = await listAssignments(alice, memoUuid);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([expect.objectContaining({ userUuid: bob.uuid, role: 'ADMIN' })]);
+  });
+
+  it('lists only the given memo’s assignees', async () => {
+    const memoUuid = await memoBy(alice);
+    await assign(alice, await memoBy(alice), bob.uuid);
+
+    const res = await listAssignments(alice, memoUuid);
+
+    expect(res.body).toEqual([expect.objectContaining({ userUuid: alice.uuid })]);
+  });
+
+  it('forbids listing the assignees of a memo the caller has no access to', async () => {
+    const memoUuid = await memoBy(alice);
+
+    const res = await listAssignments(bob, memoUuid);
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ message: 'Memo not found or you do not have access to it' });
+  });
+
+  it('returns 403 for a memo that does not exist, without revealing that', async () => {
+    const res = await listAssignments(alice, randomUUID());
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ message: 'Memo not found or you do not have access to it' });
+  });
+});
+
 describe('memo data exposure', () => {
   const MEMO_FIELDS = [
     'authorDisplayName',
@@ -712,6 +835,29 @@ describe('memo data exposure', () => {
 
     expect(Object.keys(res.body).sort()).toEqual([...MEMO_ON_USER_FIELDS, 'memo'].sort());
     expect(Object.keys(res.body.memo).sort()).toEqual(MEMO_FIELDS);
+    expectNoNumbers(res.body);
+  });
+
+  it('GET /memos/{memoUuid}/assignments returns only what other users may see', async () => {
+    const memoUuid = await memoBy(alice);
+    await assign(alice, memoUuid, bob.uuid, 'MOD');
+
+    const res = await listAssignments(bob, memoUuid);
+
+    for (const assignment of res.body) {
+      expect(Object.keys(assignment).sort()).toEqual([
+        'assignedAt',
+        'assignedByDisplayName',
+        'assignedByUsername',
+        'assignedByUuid',
+        'displayName',
+        'role',
+        'userUuid',
+        'username',
+      ]);
+    }
+    expect(JSON.stringify(res.body)).not.toContain(alice.email);
+    expect(JSON.stringify(res.body)).not.toContain(bob.email);
     expectNoNumbers(res.body);
   });
 

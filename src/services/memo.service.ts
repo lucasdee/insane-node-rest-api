@@ -1,11 +1,12 @@
 import {
   memoRepository,
   type PublicMemo,
+  type PublicMemoAssignment,
   type PublicMemoOnUser,
   type PublicMemoOnUserWithMemo,
 } from '../repositories/memo.repository';
 import { userRepository } from '../repositories/user.repository';
-import { Memo, MemoOnUser } from '../dtos/memo.dto';
+import { Memo, MemoAssignment, MemoOnUser } from '../dtos/memo.dto';
 import { TagCount } from '../dtos/tag.dto';
 import { Prisma } from '../generated/prisma/client';
 import { Role } from '../generated/prisma/enums';
@@ -34,6 +35,21 @@ const toMemoOnUserWithMemo = (link: PublicMemoOnUserWithMemo): MemoOnUser => ({
   ...toMemoOnUser(link),
   memo: toMemo(link.memo),
 });
+
+const toMemoAssignment = (link: PublicMemoAssignment): MemoAssignment => ({
+  userUuid: link.user.uuid,
+  username: link.user.username,
+  displayName: link.user.displayName,
+  role: link.role,
+  assignedAt: link.assignedAt,
+  assignedByUuid: link.assignedBy.uuid,
+  assignedByUsername: link.assignedBy.username,
+  assignedByDisplayName: link.assignedBy.displayName,
+});
+
+/** Oldest assignment first, which puts the author first; ties by username. */
+const byAssignedAt = (a: MemoAssignment, b: MemoAssignment) =>
+  a.assignedAt.getTime() - b.assignedAt.getTime() || a.username.localeCompare(b.username);
 
 /** Trims, lowercases and de-duplicates tag names. */
 export const normalizeTags = (tags: string[] = []): string[] => [
@@ -72,6 +88,16 @@ export class MemoService {
       throw new ForbiddenError(NO_ACCESS);
     }
     return toMemoOnUserWithMemo(link);
+  }
+
+  /**
+   * Everyone a memo is assigned to, oldest assignment first. Anyone with access to the
+   * memo may see this.
+   */
+  async listMemoAssignments(memoUuid: string, userId: number): Promise<MemoAssignment[]> {
+    const access = await this.requireAccess(memoUuid, userId);
+    const links = await memoRepository.listMemoAssignments(access.id);
+    return links.map(toMemoAssignment).sort(byAssignedAt);
   }
 
   /**
