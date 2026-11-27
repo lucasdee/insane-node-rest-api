@@ -8,7 +8,7 @@ import {
 
 const { prisma } = vi.hoisted(() => ({
   prisma: {
-    memo: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+    memo: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
     memoOnUser: { create: vi.fn(), findMany: vi.fn(), findFirst: vi.fn() },
     tag: { createMany: vi.fn(), findMany: vi.fn() },
   },
@@ -223,6 +223,13 @@ describe('MemoRepository', () => {
     const { data } = prisma.memo.update.mock.calls[0][0];
     expect(data).toEqual({ title: 'New title', content: 'New content' });
     expect(data).not.toHaveProperty('tags');
+  });
+
+  it('deleteMemo deletes the memo by id, leaving assignments and tag links to the foreign keys', async () => {
+    prisma.memo.delete.mockResolvedValue({ id: 10 });
+
+    expect(await memoRepository.deleteMemo(10)).toBeUndefined();
+    expect(prisma.memo.delete).toHaveBeenCalledWith({ where: { id: 10 }, select: { id: true } });
   });
 
   it('assignMemoToUser records who made the assignment and the role, and returns only public fields', async () => {

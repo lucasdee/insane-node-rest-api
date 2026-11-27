@@ -8,6 +8,7 @@ import {
   Post,
   Put,
   Patch,
+  Delete,
   Path,
   QueryParam,
   Body,
@@ -82,6 +83,24 @@ export class MemosController extends Controller {
     @Body() body: MemoUpdateRequest,
   ): Promise<Memo> {
     return await memoService.updateMemo(memoUuid, body, req.user!.userId);
+  }
+
+  /**
+   * Deletes a memo for everyone it is assigned to, with its assignments and tag links.
+   * Only the memo's author and ADMINs can do this.
+   */
+  @Delete('{memoUuid}')
+  @Security('jwt')
+  @Response(204, 'No Content')
+  @Response(
+    403,
+    'Memo not found or you do not have access to it, or you are neither its author nor one of its ADMINs',
+  )
+  public async deleteMemo(
+    @Request() req: AuthenticatedRequest,
+    @Path() memoUuid: string,
+  ): Promise<void> {
+    await memoService.deleteMemo(memoUuid, req.user!.userId);
   }
 
   /** Replaces all of a memo's tags. Only the memo's author, ADMINs and MODs can do this. */

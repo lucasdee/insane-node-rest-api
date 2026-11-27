@@ -157,6 +157,14 @@ export class MemoRepository {
     });
   }
 
+  /**
+   * Deletes a memo. The foreign keys cascade to its assignments and tag links; the
+   * tags themselves stay, as other memos may use them.
+   */
+  async deleteMemo(memoId: number): Promise<void> {
+    await prisma.memo.delete({ where: { id: memoId }, select: { id: true } });
+  }
+
   async assignMemoToUser(
     memoId: number,
     userId: number,

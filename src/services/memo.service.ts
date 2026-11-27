@@ -144,6 +144,19 @@ export class MemoService {
     return toMemo(await memoRepository.updateMemo(access.id, { tagNames: normalizeTags(tags) }));
   }
 
+  /**
+   * Deletes a memo, with its assignments and tag links. Only the memo's author and
+   * ADMINs may do this.
+   */
+  async deleteMemo(memoUuid: string, userId: number): Promise<void> {
+    const access = await this.requireAccess(memoUuid, userId);
+    if (!access.isAuthor && access.role !== Role.ADMIN) {
+      throw new ForbiddenError("Only the memo's author and ADMINs can delete it");
+    }
+
+    await memoRepository.deleteMemo(access.id);
+  }
+
   async assignMemoToUser(
     memoUuid: string,
     userUuid: string,
