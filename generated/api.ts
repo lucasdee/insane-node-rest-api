@@ -728,6 +728,26 @@ export class Api<
       }),
 
     /**
+     * @description Removes a user's assignment to a memo, so it no longer shows up in their list. Anyone can remove their own (leave the memo) and the ones they made. ADMINs can remove any, MODs those with the USER role. Only the author can remove the author's.
+     *
+     * @tags Memos
+     * @name RemoveMemoAssignment
+     * @request DELETE:/memos/{memoUuid}/assignments/{userUuid}
+     * @secure
+     */
+    removeMemoAssignment: (
+      memoUuid: string,
+      userUuid: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, void>({
+        path: `/memos/${memoUuid}/assignments/${userUuid}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
      * @description Replaces all of a memo's tags. Only the memo's author, ADMINs and MODs can do this.
      *
      * @tags Memos

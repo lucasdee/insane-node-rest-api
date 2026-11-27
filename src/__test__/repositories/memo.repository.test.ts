@@ -10,7 +10,7 @@ import {
 const { prisma } = vi.hoisted(() => ({
   prisma: {
     memo: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
-    memoOnUser: { create: vi.fn(), findMany: vi.fn(), findFirst: vi.fn() },
+    memoOnUser: { create: vi.fn(), findMany: vi.fn(), findFirst: vi.fn(), deleteMany: vi.fn() },
     tag: { createMany: vi.fn(), findMany: vi.fn() },
   },
 }));
@@ -117,6 +117,24 @@ describe('MemoRepository', () => {
       where: { memoId: 10 },
       select: publicMemoAssignmentSelect,
     });
+  });
+
+  it('findAssignment looks the assignment up by memo id and user uuid, with internal ids', async () => {
+    const assignment = { userId: 2, assignedById: 1, role: 'USER' };
+    prisma.memoOnUser.findFirst.mockResolvedValue(assignment);
+
+    expect(await memoRepository.findAssignment(10, 'bob-uuid')).toBe(assignment);
+    expect(prisma.memoOnUser.findFirst).toHaveBeenCalledWith({
+      where: { memoId: 10, user: { uuid: 'bob-uuid' } },
+      select: { userId: true, assignedById: true, role: true },
+    });
+  });
+
+  it('removeAssignment deletes only that user’s assignment and returns the count', async () => {
+    prisma.memoOnUser.deleteMany.mockResolvedValue({ count: 1 });
+
+    expect(await memoRepository.removeAssignment(10, 2)).toBe(1);
+    expect(prisma.memoOnUser.deleteMany).toHaveBeenCalledWith({ where: { memoId: 10, userId: 2 } });
   });
 
   it('listUserTags counts only the memos the user is assigned to', async () => {

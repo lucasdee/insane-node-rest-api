@@ -58,6 +58,11 @@ const assign = (by: UserRow, memoUuid: string, userUuid: string, role?: Role) =>
 const listAssignments = (user: UserRow, memoUuid: string) =>
   request(app).get(`/memos/${memoUuid}/assignments`).set('Authorization', bearer(user.id));
 
+const removeAssignment = (by: UserRow, memoUuid: string, userUuid: string) =>
+  request(app)
+    .delete(`/memos/${memoUuid}/assignments/${userUuid}`)
+    .set('Authorization', bearer(by.id));
+
 /** Creates a memo as `author` and returns its uuid. */
 const memoBy = async (author: UserRow): Promise<string> => (await createMemo(author)).body.uuid;
 
@@ -772,6 +777,179 @@ describe('GET /memos/{memoUuid}/assignments', () => {
 
   it('returns 403 for a memo that does not exist, without revealing that', async () => {
     const res = await listAssignments(alice, randomUUID());
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ message: 'Memo not found or you do not have access to it' });
+  });
+});
+
+describe('DELETE /memos/{memoUuid}/assignments/{userUuid}', () => {
+  const NOT_ALLOWED =
+    "Only the memo's ADMINs, its MODs (for USERs) and whoever assigned the user can remove this assignment";
+
+  /** The uuids of the memo's assignees, as its author sees them, sorted. */
+  const assignees = async (memoUuid: string) =>
+    (await listAssignments(alice, memoUuid)).body
+      .map((a: { userUuid: string }) => a.userUuid)
+      .sort();
+
+  it.each(['USER', 'MOD', 'ADMIN'] as const)(
+    'lets an ADMIN remove a %s, who then no longer has access',
+    async (role) => {
+      const memoUuid = await memoBy(alice);
+      await assign(alice, memoUuid, bob.uuid, 'ADMIN');
+      await assign(alice, memoUuid, carol.uuid, role);
+
+      const res = await removeAssignment(bob, memoUuid, carol.uuid);
+
+      expect(res.status).toBe(204);
+      expect(res.body).toEqual({});
+      expect(await listMemos(carol).then((r) => r.body)).toEqual([]);
+      expect((await getMemo(carol, memoUuid)).status).toBe(403);
+    },
+  );
+
+  it('lets a MOD remove a USER someone else assigned', async () => {
+    const memoUuid = await memoBy(alice);
+    await assign(alice, memoUuid, bob.uuid, 'MOD');
+    await assign(alice, memoUuid, carol.uuid);
+
+    expect((await removeAssignment(bob, memoUuid, carol.uuid)).status).toBe(204);
+    expect(await assignees(memoUuid)).toEqual([alice.uuid, bob.uuid].sort());
+  });
+
+  it.each(['MOD', 'ADMIN'] as const)(
+    'forbids a MOD from removing a %s someone else assigned',
+    async (role) => {
+      const memoUuid = await memoBy(alice);
+      await assign(alice, memoUuid, bob.uuid, 'MOD');
+      await assign(alice, memoUuid, carol.uuid, role);
+
+      const res = await removeAssignment(bob, memoUuid, carol.uuid);
+
+      expect(res.status).toBe(403);
+      expect(res.body).toEqual({ message: NOT_ALLOWED });
+      expect(await assignees(memoUuid)).toContain(carol.uuid);
+    },
+  );
+
+  it('forbids a USER from removing someone else', async () => {
+    const memoUuid = await memoBy(alice);
+    await assign(alice, memoUuid, bob.uuid);
+    await assign(alice, memoUuid, carol.uuid);
+
+    const res = await removeAssignment(bob, memoUuid, carol.uuid);
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ message: NOT_ALLOWED });
+  });
+
+  it.each(['USER', 'MOD', 'ADMIN'] as const)('lets a %s leave the memo', async (role) => {
+    const memoUuid = await memoBy(alice);
+    await assign(alice, memoUuid, bob.uuid, role);
+
+    expect((await removeAssignment(bob, memoUuid, bob.uuid)).status).toBe(204);
+    expect(await listMemos(bob).then((r) => r.body)).toEqual([]);
+    expect(await assignees(memoUuid)).toEqual([alice.uuid]);
+  });
+
+  it('lets whoever made an assignment remove it, even if their role alone would not', async () => {
+    const memoUuid = await memoBy(alice);
+    await assign(alice, memoUuid, bob.uuid, 'ADMIN');
+    await assign(bob, memoUuid, carol.uuid, 'ADMIN');
+    setRole(bob, memoUuid, 'USER');
+
+    expect((await removeAssignment(bob, memoUuid, carol.uuid)).status).toBe(204);
+    expect(await assignees(memoUuid)).toEqual([alice.uuid, bob.uuid].sort());
+  });
+
+  it('forbids an ADMIN from removing the author', async () => {
+    const memoUuid = await memoBy(alice);
+    await assign(alice, memoUuid, bob.uuid, 'ADMIN');
+
+    const res = await removeAssignment(bob, memoUuid, alice.uuid);
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ message: "Only the memo's author can remove their own assignment" });
+    expect(await assignees(memoUuid)).toContain(alice.uuid);
+  });
+
+  it('lets the author leave, keeping their author rights', async () => {
+    const memoUuid = await memoBy(alice);
+    await assign(alice, memoUuid, bob.uuid);
+
+    expect((await removeAssignment(alice, memoUuid, alice.uuid)).status).toBe(204);
+    expect(await listMemos(alice).then((r) => r.body)).toEqual([]);
+    expect(await assignees(memoUuid)).toEqual([bob.uuid]);
+    expect((await patchMemo(alice, memoUuid, { title: 'Still mine' })).status).toBe(200);
+  });
+
+  it('gives the author no say over others’ assignments beyond their role', async () => {
+    const memoUuid = await memoBy(alice);
+    await assign(alice, memoUuid, bob.uuid, 'ADMIN');
+    await assign(bob, memoUuid, carol.uuid);
+    setRole(alice, memoUuid, 'USER');
+
+    expect((await removeAssignment(alice, memoUuid, carol.uuid)).status).toBe(403);
+  });
+
+  it('leaves the user’s other memos and the memo’s other assignees alone', async () => {
+    const memoUuid = await memoBy(alice);
+    const otherUuid = await memoBy(alice);
+    await assign(alice, memoUuid, bob.uuid);
+    await assign(alice, memoUuid, carol.uuid);
+    await assign(alice, otherUuid, bob.uuid);
+
+    await removeAssignment(alice, memoUuid, bob.uuid);
+
+    expect(
+      await listMemos(bob).then((r) => r.body.map((l: { memoUuid: string }) => l.memoUuid)),
+    ).toEqual([otherUuid]);
+    expect(await assignees(memoUuid)).toEqual([alice.uuid, carol.uuid].sort());
+  });
+
+  it.each([
+    ['a user who is not assigned', () => carol.uuid],
+    ['a user who does not exist', () => randomUUID()],
+  ])('returns 404 for %s', async (_label, target) => {
+    const memoUuid = await memoBy(alice);
+
+    const res = await removeAssignment(alice, memoUuid, target());
+
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ message: 'The user is not assigned to the memo' });
+  });
+
+  it('answers a second removal of the same assignment with 404', async () => {
+    const memoUuid = await memoBy(alice);
+    await assign(alice, memoUuid, bob.uuid);
+    await removeAssignment(alice, memoUuid, bob.uuid);
+
+    expect((await removeAssignment(alice, memoUuid, bob.uuid)).status).toBe(404);
+  });
+
+  it('forbids removing assignments of a memo the caller has no access to', async () => {
+    const memoUuid = await memoBy(alice);
+    await assign(alice, memoUuid, bob.uuid);
+
+    const res = await removeAssignment(carol, memoUuid, bob.uuid);
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ message: 'Memo not found or you do not have access to it' });
+    expect(await assignees(memoUuid)).toContain(bob.uuid);
+  });
+
+  it('checks access to the memo before looking up the assignment', async () => {
+    const memoUuid = await memoBy(alice);
+
+    const res = await removeAssignment(carol, memoUuid, randomUUID());
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ message: 'Memo not found or you do not have access to it' });
+  });
+
+  it('returns 403 for a memo that does not exist, without revealing that', async () => {
+    const res = await removeAssignment(alice, randomUUID(), alice.uuid);
 
     expect(res.status).toBe(403);
     expect(res.body).toEqual({ message: 'Memo not found or you do not have access to it' });

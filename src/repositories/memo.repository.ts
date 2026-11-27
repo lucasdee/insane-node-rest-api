@@ -55,6 +55,9 @@ export type PublicMemoAssignment = MemoOnUserGetPayload<{
 /** A memo's internal id, its author's id and the given user's role on it, if they have one. */
 export type MemoAccess = { id: number; authorId: number; users: { role: Role }[] };
 
+/** An assignment as permission checks need it, with internal ids. */
+export type AssignmentAccess = { userId: number; assignedById: number; role: Role };
+
 /** Fields of a memo to change. Undefined ones are left as they are. */
 export type MemoChanges = { title?: string; content?: string; tagNames?: string[] };
 
@@ -123,6 +126,26 @@ export class MemoRepository {
       where: { memoId },
       select: publicMemoAssignmentSelect,
     });
+  }
+
+  /**
+   * For permission checks only: the assignment of the user with this uuid to the memo,
+   * or null if they are not assigned. The result contains internal ids.
+   */
+  async findAssignment(memoId: number, userUuid: string): Promise<AssignmentAccess | null> {
+    return prisma.memoOnUser.findFirst({
+      where: { memoId, user: { uuid: userUuid } },
+      select: { userId: true, assignedById: true, role: true },
+    });
+  }
+
+  /**
+   * Removes the user's assignment to the memo and returns how many were removed, 0 or 1.
+   * deleteMany doesn't throw when the row is already gone, e.g. after a concurrent removal.
+   */
+  async removeAssignment(memoId: number, userId: number): Promise<number> {
+    const { count } = await prisma.memoOnUser.deleteMany({ where: { memoId, userId } });
+    return count;
   }
 
   /** The user's assignment to the memo, with the memo, or null if they are not assigned. */

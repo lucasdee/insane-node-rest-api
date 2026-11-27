@@ -475,6 +475,7 @@ export const fakePrisma = {
       fakeDb.memosOnUsers.push(row);
       return selectRow('memoOnUser', row, select);
     },
+    deleteMany: async ({ where }: { where: Where }) => deleteWhere(fakeDb.memosOnUsers, where),
   },
 };
 

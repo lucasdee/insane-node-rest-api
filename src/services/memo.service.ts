@@ -1,5 +1,6 @@
 import {
   memoRepository,
+  type AssignmentAccess,
   type PublicMemo,
   type PublicMemoAssignment,
   type PublicMemoOnUser,
@@ -58,12 +59,33 @@ export const normalizeTags = (tags: string[] = []): string[] => [
 
 const NO_ACCESS = 'Memo not found or you do not have access to it';
 
-/** What the caller may do with a memo: its internal id, their role on it, and authorship. */
-type CallerAccess = { id: number; role?: Role; isAuthor: boolean };
+/**
+ * What the caller may do with a memo: its internal id, its author's id, the caller's
+ * role on it, and whether they wrote it.
+ */
+type CallerAccess = { id: number; authorId: number; role?: Role; isAuthor: boolean };
 
 /** A memo's author and its MODs and ADMINs may change its title, content and tags. */
 const canEdit = ({ role, isAuthor }: CallerAccess) =>
   isAuthor || role === Role.MOD || role === Role.ADMIN;
+
+/**
+ * Whether the caller may remove someone's assignment to a memo. Only the author may
+ * remove the author's. Otherwise anyone may remove their own (leave the memo) and ones
+ * they made; ADMINs may remove any, and MODs those with the USER role.
+ */
+const canRemoveAssignment = (
+  access: CallerAccess,
+  callerId: number,
+  target: AssignmentAccess,
+): boolean => {
+  if (target.userId === access.authorId) return callerId === access.authorId;
+  if (target.userId === callerId || target.assignedById === callerId) return true;
+  if (access.role === Role.ADMIN) return true;
+  return access.role === Role.MOD && target.role === Role.USER;
+};
+
+const NOT_ASSIGNED = 'The user is not assigned to the memo';
 
 export class MemoService {
   /**
@@ -78,7 +100,7 @@ export class MemoService {
     if (!memo || (!role && !isAuthor)) {
       throw new ForbiddenError(NO_ACCESS);
     }
-    return { id: memo.id, role, isAuthor };
+    return { id: memo.id, authorId: memo.authorId, role, isAuthor };
   }
 
   /** The caller's assignment to a memo, with the memo. */
@@ -98,6 +120,31 @@ export class MemoService {
     const access = await this.requireAccess(memoUuid, userId);
     const links = await memoRepository.listMemoAssignments(access.id);
     return links.map(toMemoAssignment).sort(byAssignedAt);
+  }
+
+  /**
+   * Removes a user's assignment to a memo; see `canRemoveAssignment` for who may.
+   * Access to the memo is checked before the user is looked up, so callers without it
+   * learn nothing about who it is shared with.
+   */
+  async removeAssignment(memoUuid: string, userUuid: string, callerId: number): Promise<void> {
+    const access = await this.requireAccess(memoUuid, callerId);
+
+    const target = await memoRepository.findAssignment(access.id, userUuid);
+    if (!target) {
+      throw new NotFoundError(NOT_ASSIGNED);
+    }
+    if (!canRemoveAssignment(access, callerId, target)) {
+      throw new ForbiddenError(
+        target.userId === access.authorId
+          ? "Only the memo's author can remove their own assignment"
+          : "Only the memo's ADMINs, its MODs (for USERs) and whoever assigned the user can remove this assignment",
+      );
+    }
+
+    if ((await memoRepository.removeAssignment(access.id, target.userId)) === 0) {
+      throw new NotFoundError(NOT_ASSIGNED);
+    }
   }
 
   /**

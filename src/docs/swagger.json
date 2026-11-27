@@ -855,6 +855,49 @@
 				]
 			}
 		},
+		"/memos/{memoUuid}/assignments/{userUuid}": {
+			"delete": {
+				"operationId": "RemoveMemoAssignment",
+				"responses": {
+					"204": {
+						"description": "No content"
+					},
+					"403": {
+						"description": "Memo not found or you do not have access to it, or you may not remove this assignment"
+					},
+					"404": {
+						"description": "The user is not assigned to the memo"
+					}
+				},
+				"description": "Removes a user's assignment to a memo, so it no longer shows up in their list.\nAnyone can remove their own (leave the memo) and the ones they made. ADMINs can\nremove any, MODs those with the USER role. Only the author can remove the author's.",
+				"tags": [
+					"Memos"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "memoUuid",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "userUuid",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
 		"/memos/{memoUuid}/tags": {
 			"put": {
 				"operationId": "ReplaceMemoTags",
