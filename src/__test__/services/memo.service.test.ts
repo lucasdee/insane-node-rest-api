@@ -14,6 +14,7 @@ vi.mock('../../repositories/memo.repository', () => ({
     deleteMemo: vi.fn(),
     findMemoAccess: vi.fn(),
     findUserMemo: vi.fn(),
+    listMemoAssignments: vi.fn(),
     assignMemoToUser: vi.fn(),
   },
 }));
@@ -292,6 +293,60 @@ describe('MemoService.replaceMemoTags', () => {
       new ForbiddenError("Only the memo's author, ADMINs and MODs can change its tags"),
     );
     expect(memos.updateMemo).not.toHaveBeenCalled();
+  });
+});
+
+describe('MemoService.listMemoAssignments', () => {
+  /** An assignment as the repository returns it. */
+  const row = (username: string, at: string, role: 'USER' | 'MOD' | 'ADMIN' = 'USER') => ({
+    role,
+    assignedAt: new Date(at),
+    user: { uuid: `${username}-uuid`, username, displayName: null },
+    assignedBy: { uuid: 'alice-uuid', username: 'alice', displayName: 'Alice' },
+  });
+
+  it('returns the assignees flattened, oldest first and then by username', async () => {
+    memos.findMemoAccess.mockResolvedValue(accessWithCallerRole('USER'));
+    memos.listMemoAssignments.mockResolvedValue([
+      row('carol', '2026-01-02T00:00:00Z'),
+      row('bob', '2026-01-02T00:00:00Z'),
+      row('alice', '2026-01-01T00:00:00Z', 'ADMIN'),
+    ]);
+
+    const result = await memoService.listMemoAssignments('memo-uuid', 1);
+
+    expect(memos.findMemoAccess).toHaveBeenCalledWith('memo-uuid', 1);
+    expect(memos.listMemoAssignments).toHaveBeenCalledWith(10);
+    expect(result.map((a) => a.username)).toEqual(['alice', 'bob', 'carol']);
+    expect(result[0]).toEqual({
+      userUuid: 'alice-uuid',
+      username: 'alice',
+      displayName: null,
+      role: 'ADMIN',
+      assignedAt: new Date('2026-01-01T00:00:00Z'),
+      assignedByUuid: 'alice-uuid',
+      assignedByUsername: 'alice',
+      assignedByDisplayName: 'Alice',
+    });
+  });
+
+  it('lets the author list the assignees without a role on the memo', async () => {
+    memos.findMemoAccess.mockResolvedValue(authorAccess(null));
+    memos.listMemoAssignments.mockResolvedValue([]);
+
+    expect(await memoService.listMemoAssignments('memo-uuid', 1)).toEqual([]);
+  });
+
+  it.each([
+    ['does not exist', null],
+    ['is not shared with the caller', accessWithCallerRole(null)],
+  ])('forbids listing a memo that %s, without telling which', async (_l, access) => {
+    memos.findMemoAccess.mockResolvedValue(access);
+
+    await expect(memoService.listMemoAssignments('memo-uuid', 1)).rejects.toThrow(
+      new ForbiddenError('Memo not found or you do not have access to it'),
+    );
+    expect(memos.listMemoAssignments).not.toHaveBeenCalled();
   });
 });
 

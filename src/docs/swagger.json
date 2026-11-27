@@ -234,6 +234,66 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"MemoAssignment": {
+				"description": "A user a memo is assigned to, with their role on it and who assigned them.",
+				"properties": {
+					"userUuid": {
+						"type": "string",
+						"example": "9b2d7c1e-4f3a-4b6c-9d8e-7f6a5b4c3d2e"
+					},
+					"username": {
+						"type": "string",
+						"example": "bob"
+					},
+					"displayName": {
+						"type": "string",
+						"nullable": true,
+						"description": "The assignee's display name, or null if they have not set one.",
+						"example": "Bob"
+					},
+					"role": {
+						"type": "string",
+						"enum": [
+							"USER",
+							"MOD",
+							"ADMIN"
+						],
+						"description": "The assignee's role on the memo, not their global role.",
+						"example": "USER"
+					},
+					"assignedAt": {
+						"type": "string",
+						"format": "date-time",
+						"example": "2024-01-01T00:00:00.000Z"
+					},
+					"assignedByUuid": {
+						"type": "string",
+						"example": "5f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b"
+					},
+					"assignedByUsername": {
+						"type": "string",
+						"example": "alice"
+					},
+					"assignedByDisplayName": {
+						"type": "string",
+						"nullable": true,
+						"description": "The display name of whoever assigned the user, or null if they have not set one.",
+						"example": "Alice"
+					}
+				},
+				"required": [
+					"userUuid",
+					"username",
+					"displayName",
+					"role",
+					"assignedAt",
+					"assignedByUuid",
+					"assignedByUsername",
+					"assignedByDisplayName"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"MemoUpdateRequest": {
 				"description": "Changes to a memo. Fields left out stay as they are.",
 				"properties": {
@@ -733,6 +793,48 @@
 					}
 				},
 				"description": "Deletes a memo for everyone it is assigned to, with its assignments and tag links.\nOnly the memo's author and ADMINs can do this.",
+				"tags": [
+					"Memos"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "memoUuid",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/memos/{memoUuid}/assignments": {
+			"get": {
+				"operationId": "ListMemoAssignments",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/MemoAssignment"
+									},
+									"type": "array"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Memo not found or you do not have access to it"
+					}
+				},
+				"description": "Lists everyone a memo is assigned to, with their role on it and who assigned them,\noldest assignment first. Anyone with access to the memo can do this.",
 				"tags": [
 					"Memos"
 				],

@@ -54,6 +54,36 @@ export class MemoOnUser {
   memo?: Memo;
 }
 
+/** A user a memo is assigned to, with their role on it and who assigned them. */
+export class MemoAssignment {
+  @Example('9b2d7c1e-4f3a-4b6c-9d8e-7f6a5b4c3d2e')
+  userUuid!: string;
+
+  @Example('bob')
+  username!: string;
+
+  /** The assignee's display name, or null if they have not set one. */
+  @Example('Bob')
+  displayName!: string | null;
+
+  /** The assignee's role on the memo, not their global role. */
+  @Example('USER')
+  role!: 'USER' | 'MOD' | 'ADMIN';
+
+  @Example('2024-01-01T00:00:00.000Z')
+  assignedAt!: Date;
+
+  @Example('5f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b')
+  assignedByUuid!: string;
+
+  @Example('alice')
+  assignedByUsername!: string;
+
+  /** The display name of whoever assigned the user, or null if they have not set one. */
+  @Example('Alice')
+  assignedByDisplayName!: string | null;
+}
+
 export class MemoCreateRequest {
   /**
    * @isString Please provide a valid title
