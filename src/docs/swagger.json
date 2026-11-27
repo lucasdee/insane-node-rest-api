@@ -721,6 +721,36 @@
 						}
 					}
 				}
+			},
+			"delete": {
+				"operationId": "DeleteMemo",
+				"responses": {
+					"204": {
+						"description": "No content"
+					},
+					"403": {
+						"description": "Memo not found or you do not have access to it, or you are neither its author nor one of its ADMINs"
+					}
+				},
+				"description": "Deletes a memo for everyone it is assigned to, with its assignments and tag links.\nOnly the memo's author and ADMINs can do this.",
+				"tags": [
+					"Memos"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "memoUuid",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
 			}
 		},
 		"/memos/{memoUuid}/tags": {

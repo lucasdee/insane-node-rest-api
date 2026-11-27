@@ -11,6 +11,7 @@ vi.mock('../../repositories/memo.repository', () => ({
     listUserTags: vi.fn(),
     createMemo: vi.fn(),
     updateMemo: vi.fn(),
+    deleteMemo: vi.fn(),
     findMemoAccess: vi.fn(),
     findUserMemo: vi.fn(),
     assignMemoToUser: vi.fn(),
@@ -291,6 +292,49 @@ describe('MemoService.replaceMemoTags', () => {
       new ForbiddenError("Only the memo's author, ADMINs and MODs can change its tags"),
     );
     expect(memos.updateMemo).not.toHaveBeenCalled();
+  });
+});
+
+describe('MemoService.deleteMemo', () => {
+  it('lets an ADMIN delete the memo', async () => {
+    memos.findMemoAccess.mockResolvedValue(accessWithCallerRole('ADMIN'));
+
+    await memoService.deleteMemo('memo-uuid', 1);
+
+    expect(memos.findMemoAccess).toHaveBeenCalledWith('memo-uuid', 1);
+    expect(memos.deleteMemo).toHaveBeenCalledWith(10);
+  });
+
+  it.each(['USER', 'MOD', null] as const)(
+    'lets the author delete the memo, even with role %s on it',
+    async (role) => {
+      memos.findMemoAccess.mockResolvedValue(authorAccess(role));
+
+      await memoService.deleteMemo('memo-uuid', 1);
+
+      expect(memos.deleteMemo).toHaveBeenCalledWith(10);
+    },
+  );
+
+  it.each(['USER', 'MOD'] as const)('forbids a %s who is not the author', async (role) => {
+    memos.findMemoAccess.mockResolvedValue(accessWithCallerRole(role));
+
+    await expect(memoService.deleteMemo('memo-uuid', 1)).rejects.toThrow(
+      new ForbiddenError("Only the memo's author and ADMINs can delete it"),
+    );
+    expect(memos.deleteMemo).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['does not exist', null],
+    ['is not shared with the caller', accessWithCallerRole(null)],
+  ])('forbids deleting a memo that %s, without telling which', async (_l, access) => {
+    memos.findMemoAccess.mockResolvedValue(access);
+
+    await expect(memoService.deleteMemo('memo-uuid', 1)).rejects.toThrow(
+      new ForbiddenError('Memo not found or you do not have access to it'),
+    );
+    expect(memos.deleteMemo).not.toHaveBeenCalled();
   });
 });
 

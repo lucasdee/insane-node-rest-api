@@ -77,4 +77,18 @@ describe('GET /tags', () => {
 
     expect((await listTags(alice)).body).toEqual([{ name: 'work', memoCount: 1 }]);
   });
+
+  it('stops counting a deleted memo, for everyone it was shared with', async () => {
+    const memoUuid = await memoWithTags(alice, ['home', 'work']);
+    await memoWithTags(alice, ['home']);
+    await request(app)
+      .post('/memos/assign')
+      .set('Authorization', bearer(alice.id))
+      .send({ memoUuid, userUuid: bob.uuid });
+
+    await request(app).delete(`/memos/${memoUuid}`).set('Authorization', bearer(alice.id));
+
+    expect((await listTags(alice)).body).toEqual([{ name: 'home', memoCount: 1 }]);
+    expect((await listTags(bob)).body).toEqual([]);
+  });
 });

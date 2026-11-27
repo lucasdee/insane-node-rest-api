@@ -408,6 +408,16 @@ export const fakePrisma = {
       if (content !== undefined) memo.content = content;
       return selectRow('memo', memo, select);
     },
+    /** Like the foreign keys, cascades to the memo's assignments and tag links. */
+    delete: async ({ where, select }: { where: Where; select?: RelationSelect }) => {
+      const memo = fakeDb.memos.find((n) => matches(n, where));
+      if (!memo) throw knownError('P2025', 'No Memo found to delete');
+      const result = selectRow('memo', memo, select);
+      deleteWhere(fakeDb.memosOnUsers, { memoId: memo.id });
+      deleteWhere(fakeDb.memosOnTags, { memoId: memo.id });
+      deleteWhere(fakeDb.memos, { id: memo.id });
+      return result;
+    },
   },
 
   tag: {

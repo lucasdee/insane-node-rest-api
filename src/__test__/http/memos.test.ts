@@ -34,6 +34,9 @@ const patchMemo = (
   changes: { title?: string; content?: string; tags?: string[] },
 ) => request(app).patch(`/memos/${memoUuid}`).set('Authorization', bearer(user.id)).send(changes);
 
+const deleteMemo = (user: UserRow, memoUuid: string) =>
+  request(app).delete(`/memos/${memoUuid}`).set('Authorization', bearer(user.id));
+
 /** Sets the user's role on the memo directly, e.g. to demote a memo's author. */
 const setRole = (user: UserRow, memoUuid: string, role: Role) => {
   const memo = fakeDb.memos.find((m) => m.uuid === memoUuid)!;
@@ -72,8 +75,10 @@ describe('authentication', () => {
     ['PUT', `/memos/${randomUUID()}/tags`],
     ['GET', `/memos/${randomUUID()}`],
     ['PATCH', `/memos/${randomUUID()}`],
+    ['DELETE', `/memos/${randomUUID()}`],
   ])('%s %s returns 401 without a token', async (method, path) => {
-    const res = await request(app)[method.toLowerCase() as 'get' | 'post' | 'put' | 'patch'](path);
+    const res =
+      await request(app)[method.toLowerCase() as 'get' | 'post' | 'put' | 'patch' | 'delete'](path);
 
     expect(res.status).toBe(401);
   });
@@ -435,6 +440,89 @@ describe('PATCH /memos/{memoUuid}', () => {
 
     expect(res.status).toBe(403);
     expect(res.body).toEqual({ message: 'Memo not found or you do not have access to it' });
+  });
+});
+
+describe('DELETE /memos/{memoUuid}', () => {
+  it('lets the author delete the memo, with its assignments and tag links', async () => {
+    const memoUuid = (await createMemo(alice, 'Memo', 'Content', ['home', 'work'])).body.uuid;
+    await assign(alice, memoUuid, bob.uuid, 'MOD');
+    await assign(alice, memoUuid, carol.uuid);
+
+    const res = await deleteMemo(alice, memoUuid);
+
+    expect(res.status).toBe(204);
+    expect(res.body).toEqual({});
+    expect(fakeDb.memos).toHaveLength(0);
+    expect(fakeDb.memosOnUsers).toHaveLength(0);
+    expect(fakeDb.memosOnTags).toHaveLength(0);
+    for (const user of [alice, bob, carol]) {
+      expect((await listMemos(user)).body).toEqual([]);
+      expect((await getMemo(user, memoUuid)).status).toBe(403);
+    }
+  });
+
+  it('leaves other memos, their assignments and the tags themselves alone', async () => {
+    const memoUuid = (await createMemo(alice, 'Memo A', 'Content', ['home'])).body.uuid;
+    const other = (await createMemo(alice, 'Memo B', 'Content', ['home'])).body.uuid;
+    await assign(alice, other, bob.uuid);
+
+    await deleteMemo(alice, memoUuid);
+
+    expect(await titles(alice, '?tags=home')).toEqual(['Memo B']);
+    expect((await listMemos(bob)).body).toEqual([expect.objectContaining({ memoUuid: other })]);
+    expect(fakeDb.tags.map((t) => t.name)).toEqual(['home']);
+  });
+
+  it('lets the author delete even with the USER role on the memo', async () => {
+    const memoUuid = await memoBy(alice);
+    setRole(alice, memoUuid, 'USER');
+
+    expect((await deleteMemo(alice, memoUuid)).status).toBe(204);
+    expect(fakeDb.memos).toHaveLength(0);
+  });
+
+  it('lets an ADMIN delete someone else’s memo', async () => {
+    const memoUuid = await memoBy(alice);
+    await assign(alice, memoUuid, bob.uuid, 'ADMIN');
+
+    expect((await deleteMemo(bob, memoUuid)).status).toBe(204);
+    expect((await listMemos(alice)).body).toEqual([]);
+  });
+
+  it.each(['MOD', 'USER'] as const)('forbids a %s who is not the author', async (role) => {
+    const memoUuid = await memoBy(alice);
+    await assign(alice, memoUuid, bob.uuid, role);
+
+    const res = await deleteMemo(bob, memoUuid);
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ message: "Only the memo's author and ADMINs can delete it" });
+    expect((await getMemo(alice, memoUuid)).status).toBe(200);
+  });
+
+  it('forbids deleting a memo the caller has no access to', async () => {
+    const memoUuid = await memoBy(alice);
+
+    const res = await deleteMemo(bob, memoUuid);
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ message: 'Memo not found or you do not have access to it' });
+    expect(fakeDb.memos).toHaveLength(1);
+  });
+
+  it('returns 403 for a memo that does not exist, without revealing that', async () => {
+    const res = await deleteMemo(alice, randomUUID());
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ message: 'Memo not found or you do not have access to it' });
+  });
+
+  it('answers a second delete of the same memo with 403', async () => {
+    const memoUuid = await memoBy(alice);
+    await deleteMemo(alice, memoUuid);
+
+    expect((await deleteMemo(alice, memoUuid)).status).toBe(403);
   });
 });
 

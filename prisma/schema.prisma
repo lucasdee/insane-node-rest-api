@@ -64,7 +64,8 @@ model Memo {
 
 model MemoOnUser {
   @@map ("memos_on_users")
-  memo          Memo     @relation(fields: [memoId], references: [id])
+  // Deleting a memo removes its assignments.
+  memo          Memo     @relation(fields: [memoId], references: [id], onDelete: Cascade)
   memoId        Int      @db.UnsignedInt
   user          User     @relation(fields: [userId], references: [id])
   userId        Int      @db.UnsignedInt

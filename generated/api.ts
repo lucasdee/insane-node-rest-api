@@ -663,6 +663,22 @@ export class Api<
       }),
 
     /**
+     * @description Deletes a memo for everyone it is assigned to, with its assignments and tag links. Only the memo's author and ADMINs can do this.
+     *
+     * @tags Memos
+     * @name DeleteMemo
+     * @request DELETE:/memos/{memoUuid}
+     * @secure
+     */
+    deleteMemo: (memoUuid: string, params: RequestParams = {}) =>
+      this.request<void, void>({
+        path: `/memos/${memoUuid}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
      * @description Replaces all of a memo's tags. Only the memo's author, ADMINs and MODs can do this.
      *
      * @tags Memos
