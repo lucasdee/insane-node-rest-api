@@ -69,18 +69,24 @@ type CallerAccess = { id: number; authorId: number; role?: Role; isAuthor: boole
 const canEdit = ({ role, isAuthor }: CallerAccess) =>
   isAuthor || role === Role.MOD || role === Role.ADMIN;
 
+/** How much each role on a memo allows; no role ranks below USER. */
+const roleRank = (role?: Role) => (role ? [Role.USER, Role.MOD, Role.ADMIN].indexOf(role) : -1);
+
 /**
- * Whether the caller may remove someone's assignment to a memo. Only the author may
- * remove the author's. Otherwise anyone may remove their own (leave the memo) and ones
- * they made; ADMINs may remove any, and MODs those with the USER role.
+ * Whether the caller may remove someone's assignment to a memo, other than the author's,
+ * which nobody may remove. Anyone may remove their own (leave the memo), and ones they
+ * made if their role is at least as high as the assignee's. ADMINs may remove any, and
+ * MODs those with the USER role.
  */
 const canRemoveAssignment = (
   access: CallerAccess,
   callerId: number,
   target: AssignmentAccess,
 ): boolean => {
-  if (target.userId === access.authorId) return callerId === access.authorId;
-  if (target.userId === callerId || target.assignedById === callerId) return true;
+  if (target.userId === callerId) return true;
+  if (target.assignedById === callerId && roleRank(access.role) >= roleRank(target.role)) {
+    return true;
+  }
   if (access.role === Role.ADMIN) return true;
   return access.role === Role.MOD && target.role === Role.USER;
 };
@@ -123,7 +129,8 @@ export class MemoService {
   }
 
   /**
-   * Removes a user's assignment to a memo; see `canRemoveAssignment` for who may.
+   * Removes a user's assignment to a memo; see `canRemoveAssignment` for who may. The
+   * author's assignment can't be removed, not even by the author.
    * Access to the memo is checked before the user is looked up, so callers without it
    * learn nothing about who it is shared with.
    */
@@ -134,11 +141,13 @@ export class MemoService {
     if (!target) {
       throw new NotFoundError(NOT_ASSIGNED);
     }
+    // The author keeps their assignment, so the memo always stays in their list.
+    if (target.userId === access.authorId) {
+      throw new ForbiddenError("The memo's author can't be removed from it");
+    }
     if (!canRemoveAssignment(access, callerId, target)) {
       throw new ForbiddenError(
-        target.userId === access.authorId
-          ? "Only the memo's author can remove their own assignment"
-          : "Only the memo's ADMINs, its MODs (for USERs) and whoever assigned the user can remove this assignment",
+        "Only the memo's ADMINs, its MODs (for USERs) and whoever assigned the user, with a role at least as high, can remove this assignment",
       );
     }
 

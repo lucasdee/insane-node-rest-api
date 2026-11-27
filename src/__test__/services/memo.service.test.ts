@@ -355,8 +355,9 @@ describe('MemoService.listMemoAssignments', () => {
 describe('MemoService.removeAssignment', () => {
   type Role = 'USER' | 'MOD' | 'ADMIN';
   const NOT_ALLOWED = new ForbiddenError(
-    "Only the memo's ADMINs, its MODs (for USERs) and whoever assigned the user can remove this assignment",
+    "Only the memo's ADMINs, its MODs (for USERs) and whoever assigned the user, with a role at least as high, can remove this assignment",
   );
+  const AUTHOR_STAYS = new ForbiddenError("The memo's author can't be removed from it");
 
   /** User 2's assignment, made by `assignedById` (the author, 99, by default). */
   const target = (role: Role, assignedById = 99) => ({ userId: 2, assignedById, role });
@@ -391,12 +392,28 @@ describe('MemoService.removeAssignment', () => {
     expect(memos.removeAssignment).not.toHaveBeenCalled();
   });
 
-  it.each(['USER', 'MOD'] as const)(
-    'lets a %s remove an ADMIN assignment they made',
-    async (caller) => {
-      await remove(accessWithCallerRole(caller), target('ADMIN', 1));
+  it.each([
+    ['USER', 'USER'],
+    ['MOD', 'USER'],
+    ['MOD', 'MOD'],
+    ['ADMIN', 'ADMIN'],
+  ] as const)('lets a %s remove a %s assignment they made', async (caller, role) => {
+    await remove(accessWithCallerRole(caller), target(role, 1));
 
-      expect(memos.removeAssignment).toHaveBeenCalledWith(10, 2);
+    expect(memos.removeAssignment).toHaveBeenCalledWith(10, 2);
+  });
+
+  it.each([
+    ['USER', 'MOD'],
+    ['USER', 'ADMIN'],
+    ['MOD', 'ADMIN'],
+  ] as const)(
+    'forbids a %s from removing a %s assignment they made, as that role is higher',
+    async (caller, role) => {
+      await expect(remove(accessWithCallerRole(caller), target(role, 1))).rejects.toThrow(
+        NOT_ALLOWED,
+      );
+      expect(memos.removeAssignment).not.toHaveBeenCalled();
     },
   );
 
@@ -406,18 +423,22 @@ describe('MemoService.removeAssignment', () => {
     expect(memos.removeAssignment).toHaveBeenCalledWith(10, 1);
   });
 
-  it('forbids anyone but the author from removing the author’s assignment', async () => {
+  it('forbids an ADMIN from removing the author’s assignment', async () => {
     await expect(
       remove(accessWithCallerRole('ADMIN'), { userId: 99, assignedById: 99, role: 'ADMIN' }),
-    ).rejects.toThrow(new ForbiddenError("Only the memo's author can remove their own assignment"));
+    ).rejects.toThrow(AUTHOR_STAYS);
     expect(memos.removeAssignment).not.toHaveBeenCalled();
   });
 
-  it('lets the author remove their own assignment', async () => {
-    await remove(authorAccess('ADMIN'), { userId: 1, assignedById: 1, role: 'ADMIN' });
-
-    expect(memos.removeAssignment).toHaveBeenCalledWith(10, 1);
-  });
+  it.each(['USER', 'MOD', 'ADMIN'] as const)(
+    'forbids the author from leaving, even with the %s role',
+    async (role) => {
+      await expect(
+        remove(authorAccess(role), { userId: 1, assignedById: 1, role }),
+      ).rejects.toThrow(AUTHOR_STAYS);
+      expect(memos.removeAssignment).not.toHaveBeenCalled();
+    },
+  );
 
   it('gives the author no extra say over others’ assignments', async () => {
     await expect(remove(authorAccess('USER'), target('USER'))).rejects.toThrow(NOT_ALLOWED);

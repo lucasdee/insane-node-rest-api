@@ -869,7 +869,7 @@
 						"description": "The user is not assigned to the memo"
 					}
 				},
-				"description": "Removes a user's assignment to a memo, so it no longer shows up in their list.\nAnyone can remove their own (leave the memo) and the ones they made. ADMINs can\nremove any, MODs those with the USER role. Only the author can remove the author's.",
+				"description": "Removes a user's assignment to a memo, so it no longer shows up in their list.\nAnyone can remove their own (leave the memo), and the ones they made if their role is\nat least as high as the assignee's. ADMINs can remove any, MODs those with the USER\nrole. The author's assignment can't be removed, not even by the author.",
 				"tags": [
 					"Memos"
 				],

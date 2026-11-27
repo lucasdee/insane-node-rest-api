@@ -728,7 +728,7 @@ export class Api<
       }),
 
     /**
-     * @description Removes a user's assignment to a memo, so it no longer shows up in their list. Anyone can remove their own (leave the memo) and the ones they made. ADMINs can remove any, MODs those with the USER role. Only the author can remove the author's.
+     * @description Removes a user's assignment to a memo, so it no longer shows up in their list. Anyone can remove their own (leave the memo), and the ones they made if their role is at least as high as the assignee's. ADMINs can remove any, MODs those with the USER role. The author's assignment can't be removed, not even by the author.
      *
      * @tags Memos
      * @name RemoveMemoAssignment
