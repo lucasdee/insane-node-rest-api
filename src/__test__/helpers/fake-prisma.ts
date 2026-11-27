@@ -380,20 +380,32 @@ export const fakePrisma = {
       const memo = fakeDb.memos.find((n) => matches(n, where));
       return memo ? selectRow('memo', memo, select) : null;
     },
-    /** Supports replacing tags only: `data: { tags: { deleteMany: {}, create: [...] } }`. */
+    /**
+     * Sets `title` and `content` unless undefined, and replaces all tags when given
+     * `tags: { deleteMany: {}, create: [...] }`.
+     */
     update: async ({
       where,
       data,
       select,
     }: {
       where: Where;
-      data: { tags: { deleteMany: Record<string, never>; create: TagConnects } };
+      data: {
+        title?: string;
+        content?: string;
+        tags?: { deleteMany: Record<string, never>; create: TagConnects };
+      };
       select?: RelationSelect;
     }) => {
       const memo = fakeDb.memos.find((n) => matches(n, where));
       if (!memo) throw knownError('P2025', 'No Memo found to update');
-      deleteWhere(fakeDb.memosOnTags, { memoId: memo.id });
-      linkTags(memo.id, data.tags.create);
+      const { tags, title, content } = data;
+      if (tags) {
+        deleteWhere(fakeDb.memosOnTags, { memoId: memo.id });
+        linkTags(memo.id, tags.create);
+      }
+      if (title !== undefined) memo.title = title;
+      if (content !== undefined) memo.content = content;
       return selectRow('memo', memo, select);
     },
   },
@@ -428,6 +440,10 @@ export const fakePrisma = {
       fakeDb.memosOnUsers
         .filter((link) => matches(link, where, 'memoOnUser'))
         .map((link) => selectRow('memoOnUser', link, select)),
+    findFirst: async ({ where, select }: { where: Where; select?: RelationSelect }) => {
+      const link = fakeDb.memosOnUsers.find((l) => matches(l, where, 'memoOnUser'));
+      return link ? selectRow('memoOnUser', link, select) : null;
+    },
     create: async ({
       data,
       select,

@@ -121,6 +121,29 @@ export interface MemoCreateRequest {
   tags?: TagName[];
 }
 
+/** Changes to a memo. Fields left out stay as they are. */
+export interface MemoUpdateRequest {
+  /**
+   * @minLength 3
+   * @maxLength 128
+   * @example "My edited memo"
+   */
+  title?: string;
+  /**
+   * @minLength 3
+   * @maxLength 10000
+   * @example "This is the edited content of my memo."
+   */
+  content?: string;
+  /**
+   * The memo's new tags, replacing all current ones. An empty list removes them all.
+   * Duplicates (ignoring case) are merged.
+   * @maxItems 10
+   * @example ["groceries","home"]
+   */
+  tags?: TagName[];
+}
+
 export interface MemoTagsUpdateRequest {
   /**
    * The memo's new tags, replacing all current ones. An empty list removes them all.
@@ -600,7 +623,47 @@ export class Api<
       }),
 
     /**
-     * @description Replaces all of a memo's tags. Only the memo's ADMINs and MODs can do this.
+     * @description Returns your assignment to a memo, with the memo.
+     *
+     * @tags Memos
+     * @name GetMemo
+     * @request GET:/memos/{memoUuid}
+     * @secure
+     */
+    getMemo: (memoUuid: string, params: RequestParams = {}) =>
+      this.request<MemoOnUser, void>({
+        path: `/memos/${memoUuid}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Changes a memo's title, content and tags. Fields left out stay as they are. Only the memo's author, ADMINs and MODs can do this.
+     *
+     * @tags Memos
+     * @name UpdateMemo
+     * @request PATCH:/memos/{memoUuid}
+     * @secure
+     */
+    updateMemo: (
+      memoUuid: string,
+      data: MemoUpdateRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<Memo, void>({
+        path: `/memos/${memoUuid}`,
+        method: "PATCH",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Replaces all of a memo's tags. Only the memo's author, ADMINs and MODs can do this.
      *
      * @tags Memos
      * @name ReplaceMemoTags

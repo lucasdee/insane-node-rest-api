@@ -97,6 +97,16 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "MemoUpdateRequest": {
+        "dataType": "refObject",
+        "properties": {
+            "title": {"dataType":"string","validators":{"isString":{"errorMsg":"Please provide a valid title"},"minLength":{"errorMsg":"Please provide a title that is at least 3 characters long","value":3},"maxLength":{"errorMsg":"Please provide a title that is at most 128 characters long","value":128}}},
+            "content": {"dataType":"string","validators":{"isString":{"errorMsg":"Please provide valid content"},"minLength":{"errorMsg":"Please provide content that is at least 3 characters long","value":3},"maxLength":{"errorMsg":"Please provide content that is at most 10000 characters long","value":10000}}},
+            "tags": {"dataType":"array","array":{"dataType":"refAlias","ref":"TagName"},"validators":{"maxItems":{"errorMsg":"Please provide at most 10 tags","value":10}}},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "MemoTagsUpdateRequest": {
         "dataType": "refObject",
         "properties": {
@@ -317,6 +327,71 @@ export function RegisterRoutes(app: Router) {
                 next,
                 validatedArgs,
                 successStatus: 201,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsMemosController_getMemo: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                memoUuid: {"in":"path","name":"memoUuid","required":true,"dataType":"string"},
+        };
+        app.get('/memos/:memoUuid',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(MemosController)),
+            ...(fetchMiddlewares<RequestHandler>(MemosController.prototype.getMemo)),
+
+            async function MemosController_getMemo(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsMemosController_getMemo, request, response, next });
+
+                const controller = new MemosController();
+
+              await templateService.apiHandler({
+                methodName: 'getMemo',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsMemosController_updateMemo: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                memoUuid: {"in":"path","name":"memoUuid","required":true,"dataType":"string"},
+                body: {"in":"body","name":"body","required":true,"ref":"MemoUpdateRequest"},
+        };
+        app.patch('/memos/:memoUuid',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(MemosController)),
+            ...(fetchMiddlewares<RequestHandler>(MemosController.prototype.updateMemo)),
+
+            async function MemosController_updateMemo(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsMemosController_updateMemo, request, response, next });
+
+                const controller = new MemosController();
+
+              await templateService.apiHandler({
+                methodName: 'updateMemo',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
               });
             } catch (err) {
                 return next(err);

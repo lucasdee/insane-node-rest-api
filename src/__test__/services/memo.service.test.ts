@@ -10,8 +10,9 @@ vi.mock('../../repositories/memo.repository', () => ({
     listUserMemos: vi.fn(),
     listUserTags: vi.fn(),
     createMemo: vi.fn(),
-    replaceMemoTags: vi.fn(),
+    updateMemo: vi.fn(),
     findMemoAccess: vi.fn(),
+    findUserMemo: vi.fn(),
     assignMemoToUser: vi.fn(),
   },
 }));
@@ -69,9 +70,17 @@ const linkDto = {
   role: 'USER',
 };
 
+/** Access to memo 10, written by user 99, for caller 1 with the given role on it. */
 const accessWithCallerRole = (role: 'USER' | 'MOD' | 'ADMIN' | null) => ({
   id: 10,
+  authorId: 99,
   users: role ? [{ role }] : [],
+});
+
+/** Access to memo 10 for caller 1 as its author, with the given role on it. */
+const authorAccess = (role: 'USER' | 'MOD' | 'ADMIN' | null) => ({
+  ...accessWithCallerRole(role),
+  authorId: 1,
 });
 
 beforeEach(() => {
@@ -147,21 +156,121 @@ describe('MemoService.createMemo', () => {
   });
 });
 
+describe('MemoService.getMemo', () => {
+  it('returns the caller’s assignment with the memo', async () => {
+    memos.findUserMemo.mockResolvedValue({ ...publicLink, memo: publicMemo });
+
+    expect(await memoService.getMemo('memo-uuid', 1)).toEqual({ ...linkDto, memo: memoDto });
+    expect(memos.findUserMemo).toHaveBeenCalledWith('memo-uuid', 1);
+  });
+
+  it('answers a memo the caller is not assigned to as if it did not exist', async () => {
+    memos.findUserMemo.mockResolvedValue(null);
+
+    await expect(memoService.getMemo('memo-uuid', 1)).rejects.toThrow(
+      new ForbiddenError('Memo not found or you do not have access to it'),
+    );
+  });
+});
+
+describe('MemoService.updateMemo', () => {
+  it.each(['MOD', 'ADMIN'] as const)(
+    'lets a %s change the title, content and normalized tags',
+    async (role) => {
+      memos.findMemoAccess.mockResolvedValue(accessWithCallerRole(role));
+      memos.updateMemo.mockResolvedValue(withTags('home'));
+
+      const changes = { title: 'New', content: 'Changed', tags: ['HOME', 'home'] };
+      expect(await memoService.updateMemo('memo-uuid', changes, 1)).toEqual({
+        ...memoDto,
+        tags: ['home'],
+      });
+      expect(memos.findMemoAccess).toHaveBeenCalledWith('memo-uuid', 1);
+      expect(memos.updateMemo).toHaveBeenCalledWith(10, {
+        title: 'New',
+        content: 'Changed',
+        tagNames: ['home'],
+      });
+    },
+  );
+
+  it.each(['USER', null] as const)(
+    'lets the author edit, even with role %s on the memo',
+    async (role) => {
+      memos.findMemoAccess.mockResolvedValue(authorAccess(role));
+      memos.updateMemo.mockResolvedValue(publicMemo);
+
+      expect(await memoService.updateMemo('memo-uuid', { title: 'New' }, 1)).toEqual(memoDto);
+    },
+  );
+
+  it('keeps the tags when none are given', async () => {
+    memos.findMemoAccess.mockResolvedValue(accessWithCallerRole('ADMIN'));
+    memos.updateMemo.mockResolvedValue(publicMemo);
+
+    await memoService.updateMemo('memo-uuid', { content: 'Changed' }, 1);
+
+    expect(memos.updateMemo).toHaveBeenCalledWith(10, {
+      title: undefined,
+      content: 'Changed',
+      tagNames: undefined,
+    });
+  });
+
+  it('removes all tags when given an empty list', async () => {
+    memos.findMemoAccess.mockResolvedValue(accessWithCallerRole('ADMIN'));
+    memos.updateMemo.mockResolvedValue(publicMemo);
+
+    await memoService.updateMemo('memo-uuid', { tags: [] }, 1);
+
+    expect(memos.updateMemo).toHaveBeenCalledWith(10, expect.objectContaining({ tagNames: [] }));
+  });
+
+  it.each([
+    ['does not exist', null],
+    ['is not shared with the caller', accessWithCallerRole(null)],
+  ])('forbids editing a memo that %s, without telling which', async (_l, access) => {
+    memos.findMemoAccess.mockResolvedValue(access);
+
+    await expect(memoService.updateMemo('memo-uuid', { title: 'New' }, 1)).rejects.toThrow(
+      new ForbiddenError('Memo not found or you do not have access to it'),
+    );
+    expect(memos.updateMemo).not.toHaveBeenCalled();
+  });
+
+  it('forbids a caller with the USER role who is not the author', async () => {
+    memos.findMemoAccess.mockResolvedValue(accessWithCallerRole('USER'));
+
+    await expect(memoService.updateMemo('memo-uuid', { title: 'New' }, 1)).rejects.toThrow(
+      new ForbiddenError("Only the memo's author, ADMINs and MODs can edit it"),
+    );
+    expect(memos.updateMemo).not.toHaveBeenCalled();
+  });
+});
+
 describe('MemoService.replaceMemoTags', () => {
   it.each(['MOD', 'ADMIN'] as const)(
     'lets a %s replace the tags with normalized ones',
     async (role) => {
       memos.findMemoAccess.mockResolvedValue(accessWithCallerRole(role));
-      memos.replaceMemoTags.mockResolvedValue(withTags('home'));
+      memos.updateMemo.mockResolvedValue(withTags('home'));
 
       expect(await memoService.replaceMemoTags('memo-uuid', ['HOME'], 1)).toEqual({
         ...memoDto,
         tags: ['home'],
       });
       expect(memos.findMemoAccess).toHaveBeenCalledWith('memo-uuid', 1);
-      expect(memos.replaceMemoTags).toHaveBeenCalledWith(10, ['home']);
+      expect(memos.updateMemo).toHaveBeenCalledWith(10, { tagNames: ['home'] });
     },
   );
+
+  it('lets the author replace the tags, even with the USER role on the memo', async () => {
+    memos.findMemoAccess.mockResolvedValue(authorAccess('USER'));
+    memos.updateMemo.mockResolvedValue(publicMemo);
+
+    expect(await memoService.replaceMemoTags('memo-uuid', [], 1)).toEqual(memoDto);
+    expect(memos.updateMemo).toHaveBeenCalledWith(10, { tagNames: [] });
+  });
 
   it.each([
     ['does not exist', null],
@@ -172,16 +281,16 @@ describe('MemoService.replaceMemoTags', () => {
     await expect(memoService.replaceMemoTags('memo-uuid', ['home'], 1)).rejects.toThrow(
       new ForbiddenError('Memo not found or you do not have access to it'),
     );
-    expect(memos.replaceMemoTags).not.toHaveBeenCalled();
+    expect(memos.updateMemo).not.toHaveBeenCalled();
   });
 
-  it('forbids a caller with the USER role on the memo', async () => {
+  it('forbids a caller with the USER role who is not the author', async () => {
     memos.findMemoAccess.mockResolvedValue(accessWithCallerRole('USER'));
 
     await expect(memoService.replaceMemoTags('memo-uuid', ['home'], 1)).rejects.toThrow(
-      new ForbiddenError("Only the memo's ADMINs and MODs can change its tags"),
+      new ForbiddenError("Only the memo's author, ADMINs and MODs can change its tags"),
     );
-    expect(memos.replaceMemoTags).not.toHaveBeenCalled();
+    expect(memos.updateMemo).not.toHaveBeenCalled();
   });
 });
 

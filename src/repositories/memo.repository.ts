@@ -40,8 +40,11 @@ export type PublicMemoOnUserWithMemo = MemoOnUserGetPayload<{
   select: typeof publicMemoOnUserWithMemoSelect;
 }>;
 
-/** A memo's internal id and the given user's role on it, if they have one. */
-export type MemoAccess = { id: number; users: { role: Role }[] };
+/** A memo's internal id, its author's id and the given user's role on it, if they have one. */
+export type MemoAccess = { id: number; authorId: number; users: { role: Role }[] };
+
+/** Fields of a memo to change. Undefined ones are left as they are. */
+export type MemoChanges = { title?: string; content?: string; tagNames?: string[] };
 
 /**
  * Restricts a memo list to memos carrying the given tags: `all` of them, or `any`
@@ -93,11 +96,20 @@ export class MemoRepository {
       where: { uuid: memoUuid },
       select: {
         id: true,
+        authorId: true,
         users: {
           where: { userId },
           select: { role: true },
         },
       },
+    });
+  }
+
+  /** The user's assignment to the memo, with the memo, or null if they are not assigned. */
+  async findUserMemo(memoUuid: string, userId: number): Promise<PublicMemoOnUserWithMemo | null> {
+    return prisma.memoOnUser.findFirst({
+      where: { userId, memo: { uuid: memoUuid } },
+      select: publicMemoOnUserWithMemoSelect,
     });
   }
 
@@ -128,14 +140,19 @@ export class MemoRepository {
   }
 
   /**
-   * Replaces all of a memo's tags. Prisma runs the nested delete and create in one
-   * transaction. `tagNames` must already be normalized.
+   * Changes a memo's title and content. Given `tagNames` replace all of its tags; Prisma
+   * runs the nested delete and create in one transaction. `tagNames` must already be
+   * normalized.
    */
-  async replaceMemoTags(memoId: number, tagNames: string[]): Promise<PublicMemo> {
-    await ensureTags(tagNames);
+  async updateMemo(memoId: number, { title, content, tagNames }: MemoChanges): Promise<PublicMemo> {
+    if (tagNames) await ensureTags(tagNames);
     return prisma.memo.update({
       where: { id: memoId },
-      data: { tags: { deleteMany: {}, create: connectTags(tagNames) } },
+      data: {
+        title,
+        content,
+        ...(tagNames && { tags: { deleteMany: {}, create: connectTags(tagNames) } }),
+      },
       select: publicMemoSelect,
     });
   }

@@ -234,6 +234,37 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"MemoUpdateRequest": {
+				"description": "Changes to a memo. Fields left out stay as they are.",
+				"properties": {
+					"title": {
+						"type": "string",
+						"example": "My edited memo",
+						"minLength": 3,
+						"maxLength": 128
+					},
+					"content": {
+						"type": "string",
+						"example": "This is the edited content of my memo.",
+						"minLength": 3,
+						"maxLength": 10000
+					},
+					"tags": {
+						"items": {
+							"$ref": "#/components/schemas/TagName"
+						},
+						"type": "array",
+						"description": "The memo's new tags, replacing all current ones. An empty list removes them all.\nDuplicates (ignoring case) are merged.",
+						"example": [
+							"groceries",
+							"home"
+						],
+						"maxItems": 10
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
 			"MemoTagsUpdateRequest": {
 				"properties": {
 					"tags": {
@@ -606,6 +637,92 @@
 				}
 			}
 		},
+		"/memos/{memoUuid}": {
+			"get": {
+				"operationId": "GetMemo",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/MemoOnUser"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Memo not found or you do not have access to it"
+					}
+				},
+				"description": "Returns your assignment to a memo, with the memo.",
+				"tags": [
+					"Memos"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "memoUuid",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"patch": {
+				"operationId": "UpdateMemo",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Memo"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Memo not found or you do not have access to it, or you are neither its author nor one of its ADMINs or MODs"
+					}
+				},
+				"description": "Changes a memo's title, content and tags. Fields left out stay as they are. Only\nthe memo's author, ADMINs and MODs can do this.",
+				"tags": [
+					"Memos"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "memoUuid",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/MemoUpdateRequest"
+							}
+						}
+					}
+				}
+			}
+		},
 		"/memos/{memoUuid}/tags": {
 			"put": {
 				"operationId": "ReplaceMemoTags",
@@ -621,10 +738,10 @@
 						}
 					},
 					"403": {
-						"description": "Memo not found or you do not have access to it, or your role on the memo does not allow changing its tags"
+						"description": "Memo not found or you do not have access to it, or you are neither its author nor one of its ADMINs or MODs"
 					}
 				},
-				"description": "Replaces all of a memo's tags. Only the memo's ADMINs and MODs can do this.",
+				"description": "Replaces all of a memo's tags. Only the memo's author, ADMINs and MODs can do this.",
 				"tags": [
 					"Memos"
 				],

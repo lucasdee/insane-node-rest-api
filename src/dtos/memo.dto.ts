@@ -79,6 +79,33 @@ export class MemoCreateRequest {
   tags?: TagName[];
 }
 
+/** Changes to a memo. Fields left out stay as they are. */
+export class MemoUpdateRequest {
+  /**
+   * @isString Please provide a valid title
+   * @minLength 3 Please provide a title that is at least 3 characters long
+   * @maxLength 128 Please provide a title that is at most 128 characters long
+   */
+  @Example('My edited memo')
+  title?: string;
+
+  /**
+   * @isString Please provide valid content
+   * @minLength 3 Please provide content that is at least 3 characters long
+   * @maxLength 10000 Please provide content that is at most 10000 characters long
+   */
+  @Example('This is the edited content of my memo.')
+  content?: string;
+
+  /**
+   * The memo's new tags, replacing all current ones. An empty list removes them all.
+   * Duplicates (ignoring case) are merged.
+   * @maxItems 10 Please provide at most 10 tags
+   */
+  @Example(['groceries', 'home'])
+  tags?: TagName[];
+}
+
 export class MemoTagsUpdateRequest {
   /**
    * The memo's new tags, replacing all current ones. An empty list removes them all.

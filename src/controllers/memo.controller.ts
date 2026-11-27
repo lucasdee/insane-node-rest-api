@@ -7,6 +7,7 @@ import {
   Request,
   Post,
   Put,
+  Patch,
   Path,
   QueryParam,
   Body,
@@ -21,6 +22,7 @@ import {
   MemoCreateRequest,
   MemoOnUserCreateRequest,
   MemoTagsUpdateRequest,
+  MemoUpdateRequest,
   TagName,
 } from '../dtos/memo.dto';
 
@@ -53,12 +55,41 @@ export class MemosController extends Controller {
     return await memoService.createMemo(body.title, body.content, req.user!.userId, body.tags);
   }
 
-  /** Replaces all of a memo's tags. Only the memo's ADMINs and MODs can do this. */
+  /** Returns your assignment to a memo, with the memo. */
+  @Get('{memoUuid}')
+  @Security('jwt')
+  @Response(403, 'Memo not found or you do not have access to it')
+  public async getMemo(
+    @Request() req: AuthenticatedRequest,
+    @Path() memoUuid: string,
+  ): Promise<MemoOnUser> {
+    return await memoService.getMemo(memoUuid, req.user!.userId);
+  }
+
+  /**
+   * Changes a memo's title, content and tags. Fields left out stay as they are. Only
+   * the memo's author, ADMINs and MODs can do this.
+   */
+  @Patch('{memoUuid}')
+  @Security('jwt')
+  @Response(
+    403,
+    'Memo not found or you do not have access to it, or you are neither its author nor one of its ADMINs or MODs',
+  )
+  public async updateMemo(
+    @Request() req: AuthenticatedRequest,
+    @Path() memoUuid: string,
+    @Body() body: MemoUpdateRequest,
+  ): Promise<Memo> {
+    return await memoService.updateMemo(memoUuid, body, req.user!.userId);
+  }
+
+  /** Replaces all of a memo's tags. Only the memo's author, ADMINs and MODs can do this. */
   @Put('{memoUuid}/tags')
   @Security('jwt')
   @Response(
     403,
-    'Memo not found or you do not have access to it, or your role on the memo does not allow changing its tags',
+    'Memo not found or you do not have access to it, or you are neither its author nor one of its ADMINs or MODs',
   )
   public async replaceMemoTags(
     @Request() req: AuthenticatedRequest,
