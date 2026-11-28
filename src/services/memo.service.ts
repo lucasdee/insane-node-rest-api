@@ -216,16 +216,6 @@ export class MemoService {
     );
   }
 
-  /** Replaces a memo's tags. Only the memo's author, ADMINs and MODs may do this. */
-  async replaceMemoTags(memoUuid: string, tags: string[], userId: number): Promise<Memo> {
-    const access = await this.requireAccess(memoUuid, userId);
-    if (!canEdit(access)) {
-      throw new ForbiddenError("Only the memo's author, ADMINs and MODs can change its tags");
-    }
-
-    return toMemo(await memoRepository.updateMemo(access.id, { tagNames: normalizeTags(tags) }));
-  }
-
   /**
    * Deletes a memo, with its assignments and tag links. Only the memo's author and
    * ADMINs may do this.

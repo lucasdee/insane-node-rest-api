@@ -6,7 +6,6 @@ import {
   Tags,
   Request,
   Post,
-  Put,
   Patch,
   Delete,
   Path,
@@ -23,7 +22,6 @@ import {
   MemoOnUser,
   MemoCreateRequest,
   MemoOnUserCreateRequest,
-  MemoTagsUpdateRequest,
   MemoUpdateRequest,
   TagName,
 } from '../dtos/memo.dto';
@@ -138,21 +136,6 @@ export class MemosController extends Controller {
     @Path() memoUuid: string,
   ): Promise<void> {
     await memoService.deleteMemo(memoUuid, req.user!.userId);
-  }
-
-  /** Replaces all of a memo's tags. Only the memo's author, ADMINs and MODs can do this. */
-  @Put('{memoUuid}/tags')
-  @Security('jwt')
-  @Response(
-    403,
-    'Memo not found or you do not have access to it, or you are neither its author nor one of its ADMINs or MODs',
-  )
-  public async replaceMemoTags(
-    @Request() req: AuthenticatedRequest,
-    @Path() memoUuid: string,
-    @Body() body: MemoTagsUpdateRequest,
-  ): Promise<Memo> {
-    return await memoService.replaceMemoTags(memoUuid, body.tags, req.user!.userId);
   }
 
   @Post('assign')

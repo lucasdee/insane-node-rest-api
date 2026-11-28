@@ -325,27 +325,6 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"MemoTagsUpdateRequest": {
-				"properties": {
-					"tags": {
-						"items": {
-							"$ref": "#/components/schemas/TagName"
-						},
-						"type": "array",
-						"description": "The memo's new tags, replacing all current ones. An empty list removes them all.",
-						"example": [
-							"groceries",
-							"home"
-						],
-						"maxItems": 10
-					}
-				},
-				"required": [
-					"tags"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
 			"MemoOnUserCreateRequest": {
 				"properties": {
 					"memoUuid": {
@@ -896,55 +875,6 @@
 						}
 					}
 				]
-			}
-		},
-		"/memos/{memoUuid}/tags": {
-			"put": {
-				"operationId": "ReplaceMemoTags",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/Memo"
-								}
-							}
-						}
-					},
-					"403": {
-						"description": "Memo not found or you do not have access to it, or you are neither its author nor one of its ADMINs or MODs"
-					}
-				},
-				"description": "Replaces all of a memo's tags. Only the memo's author, ADMINs and MODs can do this.",
-				"tags": [
-					"Memos"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "memoUuid",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/MemoTagsUpdateRequest"
-							}
-						}
-					}
-				}
 			}
 		},
 		"/memos/assign": {
