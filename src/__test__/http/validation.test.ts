@@ -163,26 +163,6 @@ describe.each([
   });
 });
 
-describe('PUT /memos/{memoUuid}/tags', () => {
-  const put = (body: object) =>
-    request(app)
-      .put('/memos/123e4567-e89b-12d3-a456-426614174000/tags')
-      .set('Authorization', bearer(1))
-      .send(body);
-
-  it.each([
-    ['missing tags', {}, 'body.tags'],
-    ['more than 10 tags', { tags: tagList(11) }, 'body.tags'],
-    ['a tag with a space', { tags: ['has space'] }, 'body.tags.$0'],
-    ['an unknown property', { tags: [], memoId: 1 }, 'body.memoId'],
-  ])('returns 422 for %s', async (_label, body, field) => {
-    const res = await put(body);
-
-    expect(res.status).toBe(422);
-    expect(Object.keys(res.body.details)).toContain(field);
-  });
-});
-
 describe('PATCH /memos/{memoUuid}', () => {
   const patch = (body: object) =>
     request(app)

@@ -22,9 +22,6 @@ const createMemo = (user: UserRow, title = 'Shopping', content = 'Milk, eggs', t
     .set('Authorization', bearer(user.id))
     .send({ title, content, tags });
 
-const putTags = (user: UserRow, memoUuid: string, tags: string[]) =>
-  request(app).put(`/memos/${memoUuid}/tags`).set('Authorization', bearer(user.id)).send({ tags });
-
 const getMemo = (user: UserRow, memoUuid: string) =>
   request(app).get(`/memos/${memoUuid}`).set('Authorization', bearer(user.id));
 
@@ -80,13 +77,12 @@ describe('authentication', () => {
     ['GET', '/memos'],
     ['POST', '/memos/create'],
     ['POST', '/memos/assign'],
-    ['PUT', `/memos/${randomUUID()}/tags`],
     ['GET', `/memos/${randomUUID()}`],
     ['PATCH', `/memos/${randomUUID()}`],
     ['DELETE', `/memos/${randomUUID()}`],
   ])('%s %s returns 401 without a token', async (method, path) => {
     const res =
-      await request(app)[method.toLowerCase() as 'get' | 'post' | 'put' | 'patch' | 'delete'](path);
+      await request(app)[method.toLowerCase() as 'get' | 'post' | 'patch' | 'delete'](path);
 
     expect(res.status).toBe(401);
   });
@@ -238,79 +234,6 @@ describe('GET /memos filtered by tags', () => {
   });
 });
 
-describe('PUT /memos/{memoUuid}/tags', () => {
-  it.each(['ADMIN', 'MOD'] as const)('lets a %s replace the memo’s tags', async (role) => {
-    const created = await createMemo(alice, 'Memo', 'Content', ['old']);
-    const memoUuid = created.body.uuid;
-    await assign(alice, memoUuid, bob.uuid, role);
-
-    const res = await putTags(bob, memoUuid, ['New', 'other']);
-
-    expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ uuid: memoUuid, tags: ['new', 'other'] });
-    expect(await titles(alice, '?tags=new')).toEqual(['Memo']);
-    expect(await titles(alice, '?tags=old')).toEqual([]);
-  });
-
-  it('clears the tags when given an empty list', async () => {
-    const memoUuid = (await createMemo(alice, 'Memo', 'Content', ['home'])).body.uuid;
-
-    const res = await putTags(alice, memoUuid, []);
-
-    expect(res.status).toBe(200);
-    expect(res.body.tags).toEqual([]);
-    expect(fakeDb.memosOnTags).toHaveLength(0);
-  });
-
-  it('leaves other memos’ tags alone', async () => {
-    const memoUuid = (await createMemo(alice, 'Memo A', 'Content', ['home'])).body.uuid;
-    await createMemo(alice, 'Memo B', 'Content', ['home']);
-
-    await putTags(alice, memoUuid, ['work']);
-
-    expect(await titles(alice, '?tags=home')).toEqual(['Memo B']);
-  });
-
-  it('forbids a USER on the memo from changing its tags', async () => {
-    const memoUuid = (await createMemo(alice, 'Memo', 'Content', ['home'])).body.uuid;
-    await assign(alice, memoUuid, bob.uuid);
-
-    const res = await putTags(bob, memoUuid, ['work']);
-
-    expect(res.status).toBe(403);
-    expect(res.body).toEqual({
-      message: "Only the memo's author, ADMINs and MODs can change its tags",
-    });
-    expect(await titles(alice, '?tags=home')).toEqual(['Memo']);
-  });
-
-  it('lets the author change the tags even with the USER role on the memo', async () => {
-    const memoUuid = (await createMemo(alice, 'Memo', 'Content', ['home'])).body.uuid;
-    setRole(alice, memoUuid, 'USER');
-
-    const res = await putTags(alice, memoUuid, ['work']);
-
-    expect(res.status).toBe(200);
-    expect(res.body.tags).toEqual(['work']);
-  });
-
-  it('forbids changing the tags of a memo the caller has no access to', async () => {
-    const memoUuid = await memoBy(alice);
-
-    const res = await putTags(bob, memoUuid, ['work']);
-
-    expect(res.status).toBe(403);
-    expect(res.body).toEqual({ message: 'Memo not found or you do not have access to it' });
-  });
-
-  it('returns 403 for a memo that does not exist, without revealing that', async () => {
-    const res = await putTags(alice, randomUUID(), ['work']);
-
-    expect(res.status).toBe(403);
-    expect(res.body).toEqual({ message: 'Memo not found or you do not have access to it' });
-  });
-});
-
 describe('GET /memos/{memoUuid}', () => {
   it('returns the caller’s assignment with the memo', async () => {
     const memoUuid = (await createMemo(alice, 'Memo', 'Content', ['home'])).body.uuid;
@@ -412,6 +335,28 @@ describe('PATCH /memos/{memoUuid}', () => {
 
     expect(res.body.tags).toEqual([]);
     expect(fakeDb.memosOnTags).toHaveLength(0);
+  });
+
+  it('is the only way to change tags: there is no tags-only endpoint', async () => {
+    const memoUuid = (await createMemo(alice, 'Memo', 'Content', ['home'])).body.uuid;
+
+    const res = await request(app)
+      .put(`/memos/${memoUuid}/tags`)
+      .set('Authorization', bearer(alice.id))
+      .send({ tags: ['work'] });
+
+    expect(res.status).toBe(404);
+    expect((await getMemo(alice, memoUuid)).body.memo.tags).toEqual(['home']);
+  });
+
+  it('replaces the tags for tag filters too, leaving other memos’ tags alone', async () => {
+    const memoUuid = (await createMemo(alice, 'Memo A', 'Content', ['home'])).body.uuid;
+    await createMemo(alice, 'Memo B', 'Content', ['home']);
+
+    await patchMemo(alice, memoUuid, { tags: ['work'] });
+
+    expect(await titles(alice, '?tags=home')).toEqual(['Memo B']);
+    expect(await titles(alice, '?tags=work')).toEqual(['Memo A']);
   });
 
   it('returns the memo unchanged for an empty body', async () => {
@@ -1007,13 +952,6 @@ describe('memo data exposure', () => {
     const res = await assign(alice, await memoBy(alice), bob.uuid);
 
     expect(Object.keys(res.body).sort()).toEqual(MEMO_ON_USER_FIELDS);
-    expectNoNumbers(res.body);
-  });
-
-  it('PUT /memos/{memoUuid}/tags returns only public memo fields', async () => {
-    const res = await putTags(alice, await memoBy(alice), ['home']);
-
-    expect(Object.keys(res.body).sort()).toEqual(MEMO_FIELDS);
     expectNoNumbers(res.body);
   });
 

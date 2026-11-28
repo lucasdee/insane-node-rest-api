@@ -136,15 +136,6 @@ export class MemoUpdateRequest {
   tags?: TagName[];
 }
 
-export class MemoTagsUpdateRequest {
-  /**
-   * The memo's new tags, replacing all current ones. An empty list removes them all.
-   * @maxItems 10 Please provide at most 10 tags
-   */
-  @Example(['groceries', 'home'])
-  tags!: TagName[];
-}
-
 export class MemoOnUserCreateRequest {
   /**
    * @isString Please provide a valid memo UUID

@@ -71,7 +71,7 @@ describe('GET /tags', () => {
     const memoUuid = await memoWithTags(alice, ['home']);
 
     await request(app)
-      .put(`/memos/${memoUuid}/tags`)
+      .patch(`/memos/${memoUuid}`)
       .set('Authorization', bearer(alice.id))
       .send({ tags: ['work'] });
 

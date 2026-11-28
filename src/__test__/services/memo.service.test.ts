@@ -252,52 +252,6 @@ describe('MemoService.updateMemo', () => {
   });
 });
 
-describe('MemoService.replaceMemoTags', () => {
-  it.each(['MOD', 'ADMIN'] as const)(
-    'lets a %s replace the tags with normalized ones',
-    async (role) => {
-      memos.findMemoAccess.mockResolvedValue(accessWithCallerRole(role));
-      memos.updateMemo.mockResolvedValue(withTags('home'));
-
-      expect(await memoService.replaceMemoTags('memo-uuid', ['HOME'], 1)).toEqual({
-        ...memoDto,
-        tags: ['home'],
-      });
-      expect(memos.findMemoAccess).toHaveBeenCalledWith('memo-uuid', 1);
-      expect(memos.updateMemo).toHaveBeenCalledWith(10, { tagNames: ['home'] });
-    },
-  );
-
-  it('lets the author replace the tags, even with the USER role on the memo', async () => {
-    memos.findMemoAccess.mockResolvedValue(authorAccess('USER'));
-    memos.updateMemo.mockResolvedValue(publicMemo);
-
-    expect(await memoService.replaceMemoTags('memo-uuid', [], 1)).toEqual(memoDto);
-    expect(memos.updateMemo).toHaveBeenCalledWith(10, { tagNames: [] });
-  });
-
-  it.each([
-    ['does not exist', null],
-    ['is not shared with the caller', accessWithCallerRole(null)],
-  ])('forbids changing the tags of a memo that %s, without telling which', async (_l, access) => {
-    memos.findMemoAccess.mockResolvedValue(access);
-
-    await expect(memoService.replaceMemoTags('memo-uuid', ['home'], 1)).rejects.toThrow(
-      new ForbiddenError('Memo not found or you do not have access to it'),
-    );
-    expect(memos.updateMemo).not.toHaveBeenCalled();
-  });
-
-  it('forbids a caller with the USER role who is not the author', async () => {
-    memos.findMemoAccess.mockResolvedValue(accessWithCallerRole('USER'));
-
-    await expect(memoService.replaceMemoTags('memo-uuid', ['home'], 1)).rejects.toThrow(
-      new ForbiddenError("Only the memo's author, ADMINs and MODs can change its tags"),
-    );
-    expect(memos.updateMemo).not.toHaveBeenCalled();
-  });
-});
-
 describe('MemoService.listMemoAssignments', () => {
   /** An assignment as the repository returns it. */
   const row = (username: string, at: string, role: 'USER' | 'MOD' | 'ADMIN' = 'USER') => ({

@@ -122,14 +122,6 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "MemoTagsUpdateRequest": {
-        "dataType": "refObject",
-        "properties": {
-            "tags": {"dataType":"array","array":{"dataType":"refAlias","ref":"TagName"},"required":true,"validators":{"maxItems":{"errorMsg":"Please provide at most 10 tags","value":10}}},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "MemoOnUserCreateRequest": {
         "dataType": "refObject",
         "properties": {
@@ -499,39 +491,6 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'deleteMemo',
-                controller,
-                response,
-                next,
-                validatedArgs,
-                successStatus: undefined,
-              });
-            } catch (err) {
-                return next(err);
-            }
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsMemosController_replaceMemoTags: Record<string, TsoaRoute.ParameterSchema> = {
-                req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                memoUuid: {"in":"path","name":"memoUuid","required":true,"dataType":"string"},
-                body: {"in":"body","name":"body","required":true,"ref":"MemoTagsUpdateRequest"},
-        };
-        app.put('/memos/:memoUuid/tags',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<RequestHandler>(MemosController)),
-            ...(fetchMiddlewares<RequestHandler>(MemosController.prototype.replaceMemoTags)),
-
-            async function MemosController_replaceMemoTags(request: ExRequest, response: ExResponse, next: any) {
-
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-
-            let validatedArgs: any[] = [];
-            try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsMemosController_replaceMemoTags, request, response, next });
-
-                const controller = new MemosController();
-
-              await templateService.apiHandler({
-                methodName: 'replaceMemoTags',
                 controller,
                 response,
                 next,

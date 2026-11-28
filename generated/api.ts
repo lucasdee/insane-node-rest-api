@@ -176,15 +176,6 @@ export interface MemoUpdateRequest {
   tags?: TagName[];
 }
 
-export interface MemoTagsUpdateRequest {
-  /**
-   * The memo's new tags, replacing all current ones. An empty list removes them all.
-   * @maxItems 10
-   * @example ["groceries","home"]
-   */
-  tags: TagName[];
-}
-
 export interface MemoOnUserCreateRequest {
   /**
    * @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
@@ -744,29 +735,6 @@ export class Api<
         path: `/memos/${memoUuid}/assignments/${userUuid}`,
         method: "DELETE",
         secure: true,
-        ...params,
-      }),
-
-    /**
-     * @description Replaces all of a memo's tags. Only the memo's author, ADMINs and MODs can do this.
-     *
-     * @tags Memos
-     * @name ReplaceMemoTags
-     * @request PUT:/memos/{memoUuid}/tags
-     * @secure
-     */
-    replaceMemoTags: (
-      memoUuid: string,
-      data: MemoTagsUpdateRequest,
-      params: RequestParams = {},
-    ) =>
-      this.request<Memo, void>({
-        path: `/memos/${memoUuid}/tags`,
-        method: "PUT",
-        body: data,
-        secure: true,
-        type: ContentType.Json,
-        format: "json",
         ...params,
       }),
 

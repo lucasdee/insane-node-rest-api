@@ -178,7 +178,6 @@ The author's right to edit and delete doesn't depend on their role, so they keep
 - `GET /memos/{memoUuid}` returns your assignment to one memo, with the memo.
 - `PATCH /memos/{memoUuid}` changes a memo's `title`, `content` and `tags`, and returns the memo. Fields left out stay as they are. Tags you send replace all current ones, and `tags: []` removes them all.
 - `DELETE /memos/{memoUuid}` deletes a memo for everyone it is assigned to and returns 204. Its assignments and tag links are deleted with it; the tags themselves stay, as other memos may use them.
-- `PUT /memos/{memoUuid}/tags` replaces all of a memo's tags.
 - `GET /memos/{memoUuid}/assignments` lists everyone a memo is assigned to, oldest assignment first (so the author usually comes first). Each entry has the assignee's `userUuid`, `username`, `displayName` and `role` on the memo, `assignedAt`, and the same three fields for whoever assigned them (`assignedByUuid`, `assignedByUsername`, `assignedByDisplayName`). Email addresses and global roles are never included.
 - `DELETE /memos/{memoUuid}/assignments/{userUuid}` removes a user's assignment to a memo and returns 204. The memo then no longer shows up in their list, and they lose access to it. Removing the author returns 403. It returns 404 if the user isn't assigned to the memo.
 - `POST /memos/assign` assigns a memo to another user, given `memoUuid`, `userUuid` and an optional `role` (`USER` by default), and returns 201. It returns 404 if the user doesn't exist, and 409 if they are already assigned.
